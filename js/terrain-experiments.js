@@ -3,6 +3,18 @@
  * 
  * This module contains tools and utilities for experimenting with 
  * terrain generation parameters in development mode.
+ * 
+ * Usage:
+ * 1. Include this file in your HTML after perlin.js and before app.js
+ * 2. In your create() function, initialize with:
+ *    const params = window.terrainExperiments.init(this, { initialParams });
+ * 3. Generate terrain with:
+ *    generateTerrain.call(this, params);
+ * 
+ * Controls added:
+ * - R: Regenerate map with a new random seed
+ * - Q/E: Decrease/increase noise scale
+ * - 1/2: Decrease/increase octaves
  */
 
 // Terrain generation parameters (initialized from app.js)
@@ -116,9 +128,18 @@ function regenerateTerrain(scene) {
     }
 }
 
+/**
+ * Generate a new terrain with current parameters
+ */
+function generateNewTerrain(scene) {
+    regenerateTerrain(scene);
+    return params;
+}
+
 // Export the module
 window.terrainExperiments = {
     init: initExperiments,
     getParams: () => params,
-    regenerate: regenerateTerrain
+    regenerate: regenerateTerrain,
+    generateNew: generateNewTerrain
 };

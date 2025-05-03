@@ -39,10 +39,6 @@ const TERRAIN_TYPES = {
 let mapData = [];
 let terrainTiles = [];
 
-// Make generate and render functions globally available for terrain experiments
-window.generateTerrain = generateTerrain;
-window.renderTerrain = renderTerrain;
-
 // Preload game assets
 function preload() {
     // We don't need to preload images for terrain since we'll use solid colors
@@ -297,3 +293,7 @@ window.addEventListener('resize', () => {
         game.scale.resize(width, height);
     }
 });
+
+// Make generate and render functions globally available for terrain experiments
+window.generateTerrain = generateTerrain;
+window.renderTerrain = renderTerrain;
