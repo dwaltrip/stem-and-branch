@@ -2,12 +2,9 @@ import Phaser from 'phaser';
 import { terrainExperiments } from '../utils/TerrainExperiments';
 import { PerlinNoise } from '../utils/PerlinNoise';
 import { TerrainParams, TerrainType, TERRAIN_COLORS } from '../utils/TerrainTypes';
+import { GRID, PLAYER } from '../GameConstants';
 
 export class MainScene extends Phaser.Scene {
-  // Grid configuration
-  private readonly GRID_SIZE: number = 32; // Size of each grid cell in pixels
-  private readonly MAP_WIDTH: number = 50; // Width of the map in grid cells
-  private readonly MAP_HEIGHT: number = 50; // Height of the map in grid cells
 
   // Game objects
   private player!: Phaser.Physics.Arcade.Sprite;
@@ -35,8 +32,8 @@ export class MainScene extends Phaser.Scene {
     // Create a simple player rectangle
     const playerGraphics = this.make.graphics({ x: 0, y: 0 });
     playerGraphics.fillStyle(0xff0000); // Red color
-    playerGraphics.fillRect(0, 0, this.GRID_SIZE, this.GRID_SIZE);
-    playerGraphics.generateTexture('player', this.GRID_SIZE, this.GRID_SIZE);
+    playerGraphics.fillRect(0, 0, GRID.SIZE, GRID.SIZE);
+    playerGraphics.generateTexture('player', GRID.SIZE, GRID.SIZE);
   }
 
   create(): void {
@@ -69,10 +66,10 @@ export class MainScene extends Phaser.Scene {
     this.add.grid(
       0, 
       0,
-      this.MAP_WIDTH * this.GRID_SIZE, 
-      this.MAP_HEIGHT * this.GRID_SIZE,
-      this.GRID_SIZE, 
-      this.GRID_SIZE,
+      GRID.MAP_WIDTH * GRID.SIZE, 
+      GRID.MAP_HEIGHT * GRID.SIZE,
+      GRID.SIZE, 
+      GRID.SIZE,
       0x000000, 
       0, 
       0x000000, 
@@ -81,18 +78,18 @@ export class MainScene extends Phaser.Scene {
 
     // Create player
     this.player = this.physics.add.sprite(
-      this.MAP_WIDTH * this.GRID_SIZE / 2, 
-      this.MAP_HEIGHT * this.GRID_SIZE / 2, 
+      GRID.MAP_WIDTH * GRID.SIZE / 2, 
+      GRID.MAP_HEIGHT * GRID.SIZE / 2, 
       'player'
     );
     
     // Set world bounds based on map size
-    this.physics.world.bounds.width = this.MAP_WIDTH * this.GRID_SIZE;
-    this.physics.world.bounds.height = this.MAP_HEIGHT * this.GRID_SIZE;
+    this.physics.world.bounds.width = GRID.MAP_WIDTH * GRID.SIZE;
+    this.physics.world.bounds.height = GRID.MAP_HEIGHT * GRID.SIZE;
     this.player.setCollideWorldBounds(true);
     
     // Set up camera to follow player
-    this.cameras.main.setBounds(0, 0, this.MAP_WIDTH * this.GRID_SIZE, this.MAP_HEIGHT * this.GRID_SIZE);
+    this.cameras.main.setBounds(0, 0, GRID.MAP_WIDTH * GRID.SIZE, GRID.MAP_HEIGHT * GRID.SIZE);
     this.cameras.main.startFollow(this.player);
     
     // Set up keyboard input
@@ -165,11 +162,11 @@ export class MainScene extends Phaser.Scene {
     const perlin = new PerlinNoise(noiseSeed);
     
     // Initialize the map data array
-    this.mapData = Array(this.MAP_HEIGHT).fill(0).map(() => Array(this.MAP_WIDTH).fill(TerrainType.GRASS));
+    this.mapData = Array(GRID.MAP_HEIGHT).fill(0).map(() => Array(GRID.MAP_WIDTH).fill(TerrainType.GRASS));
     
     // Generate terrain using Perlin noise
-    for (let y = 0; y < this.MAP_HEIGHT; y++) {
-      for (let x = 0; x < this.MAP_WIDTH; x++) {
+    for (let y = 0; y < GRID.MAP_HEIGHT; y++) {
+      for (let x = 0; x < GRID.MAP_WIDTH; x++) {
         // Get noise value at this coordinate (scaled and normalized to 0-1)
         const nx = x * noiseScale;
         const ny = y * noiseScale;
@@ -205,17 +202,17 @@ export class MainScene extends Phaser.Scene {
     const terrainContainer = this.add.container(0, 0);
     
     // Create a terrain layer
-    for (let y = 0; y < this.MAP_HEIGHT; y++) {
-      for (let x = 0; x < this.MAP_WIDTH; x++) {
+    for (let y = 0; y < GRID.MAP_HEIGHT; y++) {
+      for (let x = 0; x < GRID.MAP_WIDTH; x++) {
         const terrainType = this.mapData[y][x];
         const color = TERRAIN_COLORS[terrainType];
         
         // Create a rectangle with the appropriate color
         const tile = this.add.rectangle(
-          x * this.GRID_SIZE + this.GRID_SIZE / 2,
-          y * this.GRID_SIZE + this.GRID_SIZE / 2,
-          this.GRID_SIZE,
-          this.GRID_SIZE,
+          x * GRID.SIZE + GRID.SIZE / 2,
+          y * GRID.SIZE + GRID.SIZE / 2,
+          GRID.SIZE,
+          GRID.SIZE,
           color
         );
         
@@ -238,15 +235,15 @@ export class MainScene extends Phaser.Scene {
     this.player.setVelocity(0);
     
     // Calculate current grid position
-    const gridX = Math.floor(this.player.x / this.GRID_SIZE);
-    const gridY = Math.floor(this.player.y / this.GRID_SIZE);
+    const gridX = Math.floor(this.player.x / GRID.SIZE);
+    const gridY = Math.floor(this.player.y / GRID.SIZE);
     
     // Get current terrain type at player's position
     let terrainType: TerrainType = TerrainType.GRASS; // Default
     let terrainName = "Unknown";
     
     // Check if player is within map bounds
-    if (gridX >= 0 && gridX < this.MAP_WIDTH && gridY >= 0 && gridY < this.MAP_HEIGHT) {
+    if (gridX >= 0 && gridX < GRID.MAP_WIDTH && gridY >= 0 && gridY < GRID.MAP_HEIGHT) {
       terrainType = this.mapData[gridY][gridX];
       
       // Set terrain name based on type
@@ -270,12 +267,11 @@ export class MainScene extends Phaser.Scene {
     this.terrainText.setText(`Terrain: ${terrainName}`);
     
     // Handle player movement with the keyboard
-    const baseSpeed = 200;
-    let speed = baseSpeed;
+    let speed = PLAYER.BASE_SPEED;
     
     // Adjust speed based on terrain (slower in sand)
     if (terrainType === TerrainType.SAND) {
-      speed = baseSpeed * 0.7; // Slower in sand
+      speed = PLAYER.BASE_SPEED * PLAYER.SAND_SPEED_MULTIPLIER; // Slower in sand
     }
     
     // Calculate potential next positions
@@ -286,19 +282,19 @@ export class MainScene extends Phaser.Scene {
     
     // Horizontal movement with arrow keys or A/D
     if (this.cursors.left.isDown || this.wasdKeys.A.isDown) {
-      nextX = Math.floor((this.player.x - speed * this.game.loop.delta / 1000) / this.GRID_SIZE);
+      nextX = Math.floor((this.player.x - speed * this.game.loop.delta / 1000) / GRID.SIZE);
       velocityX = -speed;
     } else if (this.cursors.right.isDown || this.wasdKeys.D.isDown) {
-      nextX = Math.floor((this.player.x + speed * this.game.loop.delta / 1000) / this.GRID_SIZE);
+      nextX = Math.floor((this.player.x + speed * this.game.loop.delta / 1000) / GRID.SIZE);
       velocityX = speed;
     }
     
     // Vertical movement with arrow keys or W/S
     if (this.cursors.up.isDown || this.wasdKeys.W.isDown) {
-      nextY = Math.floor((this.player.y - speed * this.game.loop.delta / 1000) / this.GRID_SIZE);
+      nextY = Math.floor((this.player.y - speed * this.game.loop.delta / 1000) / GRID.SIZE);
       velocityY = -speed;
     } else if (this.cursors.down.isDown || this.wasdKeys.S.isDown) {
-      nextY = Math.floor((this.player.y + speed * this.game.loop.delta / 1000) / this.GRID_SIZE);
+      nextY = Math.floor((this.player.y + speed * this.game.loop.delta / 1000) / GRID.SIZE);
       velocityY = speed;
     }
     
@@ -327,7 +323,7 @@ export class MainScene extends Phaser.Scene {
    */
   private isValidPosition(gridX: number, gridY: number): boolean {
     // Check bounds
-    if (gridX < 0 || gridX >= this.MAP_WIDTH || gridY < 0 || gridY >= this.MAP_HEIGHT) {
+    if (gridX < 0 || gridX >= GRID.MAP_WIDTH || gridY < 0 || gridY >= GRID.MAP_HEIGHT) {
       return false;
     }
     
