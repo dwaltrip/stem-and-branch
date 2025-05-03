@@ -14,6 +14,12 @@ export class MainScene extends Phaser.Scene {
   private positionText!: Phaser.GameObjects.Text;
   private terrainText!: Phaser.GameObjects.Text;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  private wasdKeys!: {
+    W: Phaser.Input.Keyboard.Key;
+    A: Phaser.Input.Keyboard.Key;
+    S: Phaser.Input.Keyboard.Key;
+    D: Phaser.Input.Keyboard.Key;
+  };
 
   // Map data
   private mapData: TerrainType[][] = [];
@@ -92,9 +98,17 @@ export class MainScene extends Phaser.Scene {
     // Set up keyboard input
     if (this.input.keyboard) {
       this.cursors = this.input.keyboard.createCursorKeys();
+      
+      // Set up WASD keys
+      this.wasdKeys = {
+        W: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
+        A: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
+        S: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
+        D: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D)
+      };
     } else {
       console.error('Keyboard input not available');
-      // Create a dummy cursors object to prevent null references
+      // Create dummy objects to prevent null references
       this.cursors = {
         up: { isDown: false } as Phaser.Input.Keyboard.Key,
         down: { isDown: false } as Phaser.Input.Keyboard.Key,
@@ -102,6 +116,13 @@ export class MainScene extends Phaser.Scene {
         right: { isDown: false } as Phaser.Input.Keyboard.Key,
         space: { isDown: false } as Phaser.Input.Keyboard.Key,
         shift: { isDown: false } as Phaser.Input.Keyboard.Key
+      };
+      
+      this.wasdKeys = {
+        W: { isDown: false } as Phaser.Input.Keyboard.Key,
+        A: { isDown: false } as Phaser.Input.Keyboard.Key,
+        S: { isDown: false } as Phaser.Input.Keyboard.Key,
+        D: { isDown: false } as Phaser.Input.Keyboard.Key
       };
     }
     
@@ -216,7 +237,7 @@ export class MainScene extends Phaser.Scene {
     // Reset player velocity
     this.player.setVelocity(0);
     
-    // Calculate grid position
+    // Calculate current grid position
     const gridX = Math.floor(this.player.x / this.GRID_SIZE);
     const gridY = Math.floor(this.player.y / this.GRID_SIZE);
     
@@ -252,28 +273,68 @@ export class MainScene extends Phaser.Scene {
     const baseSpeed = 200;
     let speed = baseSpeed;
     
-    // Adjust speed based on terrain (slower in water/sand, can't move on mountains)
-    if (terrainType === TerrainType.WATER) {
-      speed = baseSpeed * 0.5; // Slower in water
-    } else if (terrainType === TerrainType.SAND) {
+    // Adjust speed based on terrain (slower in sand)
+    if (terrainType === TerrainType.SAND) {
       speed = baseSpeed * 0.7; // Slower in sand
-    } else if (terrainType === TerrainType.MOUNTAIN) {
-      speed = 0; // Can't move on mountains
     }
     
-    if (this.cursors.left.isDown) {
-      this.player.setVelocityX(-speed);
-    } else if (this.cursors.right.isDown) {
-      this.player.setVelocityX(speed);
+    // Calculate potential next positions
+    let nextX = gridX;
+    let nextY = gridY;
+    let velocityX = 0;
+    let velocityY = 0;
+    
+    // Horizontal movement with arrow keys or A/D
+    if (this.cursors.left.isDown || this.wasdKeys.A.isDown) {
+      nextX = Math.floor((this.player.x - speed * this.game.loop.delta / 1000) / this.GRID_SIZE);
+      velocityX = -speed;
+    } else if (this.cursors.right.isDown || this.wasdKeys.D.isDown) {
+      nextX = Math.floor((this.player.x + speed * this.game.loop.delta / 1000) / this.GRID_SIZE);
+      velocityX = speed;
     }
     
-    if (this.cursors.up.isDown) {
-      this.player.setVelocityY(-speed);
-    } else if (this.cursors.down.isDown) {
-      this.player.setVelocityY(speed);
+    // Vertical movement with arrow keys or W/S
+    if (this.cursors.up.isDown || this.wasdKeys.W.isDown) {
+      nextY = Math.floor((this.player.y - speed * this.game.loop.delta / 1000) / this.GRID_SIZE);
+      velocityY = -speed;
+    } else if (this.cursors.down.isDown || this.wasdKeys.S.isDown) {
+      nextY = Math.floor((this.player.y + speed * this.game.loop.delta / 1000) / this.GRID_SIZE);
+      velocityY = speed;
+    }
+    
+    // Check if next position is valid (within bounds and not water/mountain)
+    const canMoveX = this.isValidPosition(nextX, gridY);
+    const canMoveY = this.isValidPosition(gridX, nextY);
+    
+    // Apply movement if valid
+    if (canMoveX) {
+      this.player.setVelocityX(velocityX);
+    }
+    
+    if (canMoveY) {
+      this.player.setVelocityY(velocityY);
     }
     
     // Update position text
     this.positionText.setText(`Position: ${gridX},${gridY}`);
+  }
+  
+  /**
+   * Checks if a position is valid for player movement
+   * @param gridX X coordinate in grid cells
+   * @param gridY Y coordinate in grid cells
+   * @returns Whether the position is valid (within bounds and not water/mountain)
+   */
+  private isValidPosition(gridX: number, gridY: number): boolean {
+    // Check bounds
+    if (gridX < 0 || gridX >= this.MAP_WIDTH || gridY < 0 || gridY >= this.MAP_HEIGHT) {
+      return false;
+    }
+    
+    // Check terrain type
+    const terrainType = this.mapData[gridY][gridX];
+    
+    // Cannot move into water or mountains
+    return terrainType !== TerrainType.WATER && terrainType !== TerrainType.MOUNTAIN;
   }
 }
