@@ -16,12 +16,20 @@ module.exports = {
   },
   output: {
     filename: 'game.js',
-    path: path.resolve(__dirname, 'dist')
+    path: path.resolve(__dirname, 'dist'),
+    publicPath: '/'
   },
   devServer: {
-    static: {
-      directory: path.join(__dirname, './')
-    },
+    static: [
+      {
+        directory: path.join(__dirname, 'dist'),
+        publicPath: '/dist'
+      },
+      {
+        directory: path.join(__dirname, './'),
+        publicPath: '/'
+      }
+    ],
     compress: true,
     port: 8080,
     hot: true
