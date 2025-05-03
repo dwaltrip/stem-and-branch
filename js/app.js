@@ -55,20 +55,19 @@ let terrainTiles = [];
 
 // Preload game assets
 function preload() {
-    // Load player avatar and terrain tiles
+    // We don't need to preload images for terrain since we'll use solid colors
+    
+    // Create a player sprite
     this.load.setBaseURL('./assets/');
     
     // Example of loading sprites (you'll need to add these files to your assets folder)
     // this.load.image('player', 'sprites/player.png');
     
-    // Placeholder colored rectangles for development
-    this.load.image('player', 'https://via.placeholder.com/32/ff0000');
-    
-    // Terrain tiles (using placeholder colors for now)
-    this.load.image('water', 'https://via.placeholder.com/32/0077be');
-    this.load.image('sand', 'https://via.placeholder.com/32/f0e68c');
-    this.load.image('grass', 'https://via.placeholder.com/32/228b22');
-    this.load.image('mountain', 'https://via.placeholder.com/32/808080');
+    // Create a simple player rectangle
+    const playerGraphics = this.make.graphics({ x: 0, y: 0, add: false });
+    playerGraphics.fillStyle(0xff0000); // Red color
+    playerGraphics.fillRect(0, 0, GRID_SIZE, GRID_SIZE);
+    playerGraphics.generateTexture('player', GRID_SIZE, GRID_SIZE);
 }
 
 // Set up the game world
@@ -243,33 +242,27 @@ function renderTerrain() {
     // Create a container for all terrain tiles for better performance
     const terrainContainer = this.add.container(0, 0);
     
+    // Define terrain colors
+    const terrainColors = {
+        [TERRAIN_TYPES.WATER]: 0x1a75ff,    // Bright blue
+        [TERRAIN_TYPES.SAND]: 0xffd700,     // Gold/yellow
+        [TERRAIN_TYPES.GRASS]: 0x32cd32,    // Lime green
+        [TERRAIN_TYPES.MOUNTAIN]: 0x696969  // Dim gray
+    };
+    
     // Create a terrain layer
     for (let y = 0; y < MAP_HEIGHT; y++) {
         for (let x = 0; x < MAP_WIDTH; x++) {
             const terrainType = mapData[y][x];
-            let terrainKey;
+            const color = terrainColors[terrainType];
             
-            // Map terrain type to sprite key
-            switch (terrainType) {
-                case TERRAIN_TYPES.WATER:
-                    terrainKey = 'water';
-                    break;
-                case TERRAIN_TYPES.SAND:
-                    terrainKey = 'sand';
-                    break;
-                case TERRAIN_TYPES.GRASS:
-                    terrainKey = 'grass';
-                    break;
-                case TERRAIN_TYPES.MOUNTAIN:
-                    terrainKey = 'mountain';
-                    break;
-            }
-            
-            // Create tile sprite and position it on the grid
-            const tile = this.add.sprite(
+            // Create a rectangle with the appropriate color
+            const tile = this.add.rectangle(
                 x * GRID_SIZE + GRID_SIZE / 2,
                 y * GRID_SIZE + GRID_SIZE / 2,
-                terrainKey
+                GRID_SIZE,
+                GRID_SIZE,
+                color
             );
             
             // Add to container and store reference
