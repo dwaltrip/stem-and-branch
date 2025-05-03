@@ -1,7 +1,7 @@
 /**
  * A simple and efficient Perlin noise implementation for browser use
  */
-export default class PerlinNoise {
+export class PerlinNoise {
   private seed: number;
   private perm: Uint8Array;
   private gradP: number[][];
