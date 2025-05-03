@@ -27,7 +27,7 @@ export class MainScene extends Phaser.Scene {
     // We don't need to preload images for terrain since we'll use solid colors
     
     // Create a simple player rectangle
-    const playerGraphics = this.make.graphics({ x: 0, y: 0, add: false });
+    const playerGraphics = this.make.graphics({ x: 0, y: 0 });
     playerGraphics.fillStyle(0xff0000); // Red color
     playerGraphics.fillRect(0, 0, this.GRID_SIZE, this.GRID_SIZE);
     playerGraphics.generateTexture('player', this.GRID_SIZE, this.GRID_SIZE);
@@ -90,12 +90,25 @@ export class MainScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player);
     
     // Set up keyboard input
-    this.cursors = this.input.keyboard.createCursorKeys();
+    if (this.input.keyboard) {
+      this.cursors = this.input.keyboard.createCursorKeys();
+    } else {
+      console.error('Keyboard input not available');
+      // Create a dummy cursors object to prevent null references
+      this.cursors = {
+        up: { isDown: false } as Phaser.Input.Keyboard.Key,
+        down: { isDown: false } as Phaser.Input.Keyboard.Key,
+        left: { isDown: false } as Phaser.Input.Keyboard.Key,
+        right: { isDown: false } as Phaser.Input.Keyboard.Key,
+        space: { isDown: false } as Phaser.Input.Keyboard.Key,
+        shift: { isDown: false } as Phaser.Input.Keyboard.Key
+      };
+    }
     
     // Add text to display position
     this.positionText = this.add.text(10, 10, 'Position: 0,0', { 
       fontSize: '16px', 
-      fill: '#fff',
+      color: '#fff',
       backgroundColor: '#000'
     });
     this.positionText.setScrollFactor(0); // Fix to camera
@@ -103,7 +116,7 @@ export class MainScene extends Phaser.Scene {
     // Add terrain info text
     this.terrainText = this.add.text(10, 40, 'Terrain: Grass', { 
       fontSize: '16px', 
-      fill: '#fff',
+      color: '#fff',
       backgroundColor: '#000'
     });
     this.terrainText.setScrollFactor(0); // Fix to camera
@@ -186,13 +199,17 @@ export class MainScene extends Phaser.Scene {
         );
         
         // Add to container and store reference
-        terrainContainer.add(tile);
+        if (terrainContainer) {
+          terrainContainer.add(tile);
+        }
         this.terrainTiles.push(tile);
       }
     }
     
     // Set container to back of display list so it renders behind other objects
-    terrainContainer.setDepth(-1);
+    if (terrainContainer) {
+      terrainContainer.setDepth(-1);
+    }
   }
 
   update(): void {

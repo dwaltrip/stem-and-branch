@@ -65,7 +65,7 @@ export class TerrainExperiments {
     const noiseText = scene.add.text(10, scene.game.canvas.height - 70, 
         this.getParamsDisplay(), { 
         fontSize: '12px', 
-        fill: '#fff',
+        color: '#fff',
         backgroundColor: '#000'
     });
     noiseText.setScrollFactor(0); // Fix to camera
@@ -75,7 +75,7 @@ export class TerrainExperiments {
         'Controls: Arrow Keys to move, R to regenerate map\n' + 
         'Q/E to decrease/increase noise scale, 1/2 to decrease/increase octaves', { 
         fontSize: '14px', 
-        fill: '#fff',
+        color: '#fff',
         backgroundColor: '#000'
     });
     helpText.setScrollFactor(0); // Fix to camera
@@ -89,6 +89,11 @@ export class TerrainExperiments {
    * Set up keyboard controls for adjusting parameters
    */
   private setupControls(scene: Scene): void {
+    if (!scene.input || !scene.input.keyboard) {
+      console.error('Keyboard input not available');
+      return;
+    }
+    
     // Add keys for map controls
     scene.input.keyboard.on('keydown-R', () => {
       console.log('Regenerating map...');
