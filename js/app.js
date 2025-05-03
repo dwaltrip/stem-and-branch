@@ -35,23 +35,13 @@ const TERRAIN_TYPES = {
     MOUNTAIN: 3
 };
 
-// Terrain thresholds (adjust these to get different terrain distributions)
-const TERRAIN_THRESHOLDS = {
-    WATER: 0.3,    // 0.0 - 0.3 = Water
-    SAND: 0.4,     // 0.3 - 0.4 = Sand
-    GRASS: 0.8,    // 0.4 - 0.8 = Grass
-    MOUNTAIN: 1.0  // 0.8 - 1.0 = Mountain
-};
-
-// Noise configuration
-const NOISE_SCALE = 0.1; // Controls how zoomed in/out the noise is
-const NOISE_OCTAVES = 4; // Number of layers of noise
-const NOISE_PERSISTENCE = 0.5; // How much each layer contributes
-let NOISE_SEED = Math.random() * 1000; // Random seed for reproducible maps
-
 // Map data
 let mapData = [];
 let terrainTiles = [];
+
+// Make generate and render functions globally available for terrain experiments
+window.generateTerrain = generateTerrain;
+window.renderTerrain = renderTerrain;
 
 // Preload game assets
 function preload() {
@@ -72,63 +62,25 @@ function preload() {
 
 // Set up the game world
 function create() {
+    // Initialize terrain experiments with default parameters
+    const terrainParams = window.terrainExperiments.init(this, {
+        noiseScale: 0.1,
+        noiseOctaves: 4,
+        noisePersistence: 0.5,
+        noiseSeed: Math.random() * 1000,
+        terrainThresholds: {
+            WATER: 0.3,
+            SAND: 0.4,
+            GRASS: 0.8,
+            MOUNTAIN: 1.0
+        }
+    });
+    
     // Generate terrain using Perlin noise
-    generateTerrain.call(this);
+    generateTerrain.call(this, terrainParams);
     
     // Render the terrain tiles
     renderTerrain.call(this);
-    
-    // Add keys for map controls
-    this.input.keyboard.on('keydown-R', () => {
-        console.log('Regenerating map...');
-        // Generate new seed
-        NOISE_SEED = Math.random() * 1000;
-        // Regenerate and render terrain
-        generateTerrain.call(this);
-        renderTerrain.call(this);
-        // Update noise text
-        this.noiseText.setText(
-            `Noise Settings: Scale=${NOISE_SCALE.toFixed(3)}, Octaves=${NOISE_OCTAVES}, Seed=${NOISE_SEED.toFixed(2)}`
-        );
-    });
-    
-    // Keys to adjust noise scale
-    this.input.keyboard.on('keydown-Q', () => {
-        NOISE_SCALE = Math.max(0.01, NOISE_SCALE - 0.01);
-        generateTerrain.call(this);
-        renderTerrain.call(this);
-        this.noiseText.setText(
-            `Noise Settings: Scale=${NOISE_SCALE.toFixed(3)}, Octaves=${NOISE_OCTAVES}, Seed=${NOISE_SEED.toFixed(2)}`
-        );
-    });
-    
-    this.input.keyboard.on('keydown-E', () => {
-        NOISE_SCALE = NOISE_SCALE + 0.01;
-        generateTerrain.call(this);
-        renderTerrain.call(this);
-        this.noiseText.setText(
-            `Noise Settings: Scale=${NOISE_SCALE.toFixed(3)}, Octaves=${NOISE_OCTAVES}, Seed=${NOISE_SEED.toFixed(2)}`
-        );
-    });
-    
-    // Keys to adjust octaves
-    this.input.keyboard.on('keydown-ONE', () => {
-        NOISE_OCTAVES = Math.max(1, NOISE_OCTAVES - 1);
-        generateTerrain.call(this);
-        renderTerrain.call(this);
-        this.noiseText.setText(
-            `Noise Settings: Scale=${NOISE_SCALE.toFixed(3)}, Octaves=${NOISE_OCTAVES}, Seed=${NOISE_SEED.toFixed(2)}`
-        );
-    });
-    
-    this.input.keyboard.on('keydown-TWO', () => {
-        NOISE_OCTAVES = NOISE_OCTAVES + 1;
-        generateTerrain.call(this);
-        renderTerrain.call(this);
-        this.noiseText.setText(
-            `Noise Settings: Scale=${NOISE_SCALE.toFixed(3)}, Octaves=${NOISE_OCTAVES}, Seed=${NOISE_SEED.toFixed(2)}`
-        );
-    });
     
     // Create a grid overlay for debugging (semi-transparent)
     this.add.grid(
@@ -178,31 +130,26 @@ function create() {
         backgroundColor: '#000'
     });
     this.terrainText.setScrollFactor(0); // Fix to camera
-    
-    // Add help text
-    this.helpText = this.add.text(10, 70, 
-        'Controls: Arrow Keys to move, R to regenerate map\n' + 
-        'Q/E to decrease/increase noise scale, 1/2 to decrease/increase octaves', { 
-        fontSize: '14px', 
-        fill: '#fff',
-        backgroundColor: '#000'
-    });
-    this.helpText.setScrollFactor(0); // Fix to camera
-    
-    // Add noise parameters text
-    this.noiseText = this.add.text(10, config.height - 70, 
-        `Noise Settings: Scale=${NOISE_SCALE}, Octaves=${NOISE_OCTAVES}, Seed=${NOISE_SEED.toFixed(2)}`, { 
-        fontSize: '12px', 
-        fill: '#fff',
-        backgroundColor: '#000'
-    });
-    this.noiseText.setScrollFactor(0); // Fix to camera
 }
 
 // Generate terrain using Perlin noise
-function generateTerrain() {
+function generateTerrain(params) {
+    // Get parameters from passed object or use defaults
+    const {
+        noiseSeed = Math.random() * 1000,
+        noiseScale = 0.1,
+        noiseOctaves = 4,
+        noisePersistence = 0.5,
+        terrainThresholds = {
+            WATER: 0.3,
+            SAND: 0.4,
+            GRASS: 0.8,
+            MOUNTAIN: 1.0
+        }
+    } = params || {};
+    
     // Initialize Perlin noise generator with seed
-    const perlin = new PerlinNoise(NOISE_SEED);
+    const perlin = new PerlinNoise(noiseSeed);
     
     // Initialize the map data array
     mapData = Array(MAP_HEIGHT).fill().map(() => Array(MAP_WIDTH).fill(0));
@@ -211,17 +158,17 @@ function generateTerrain() {
     for (let y = 0; y < MAP_HEIGHT; y++) {
         for (let x = 0; x < MAP_WIDTH; x++) {
             // Get noise value at this coordinate (scaled and normalized to 0-1)
-            const nx = x * NOISE_SCALE;
-            const ny = y * NOISE_SCALE;
-            const noiseValue = perlin.normalized(nx, ny, NOISE_OCTAVES, NOISE_PERSISTENCE);
+            const nx = x * noiseScale;
+            const ny = y * noiseScale;
+            const noiseValue = perlin.normalized(nx, ny, noiseOctaves, noisePersistence);
             
             // Determine terrain type based on noise value
             let terrainType;
-            if (noiseValue < TERRAIN_THRESHOLDS.WATER) {
+            if (noiseValue < terrainThresholds.WATER) {
                 terrainType = TERRAIN_TYPES.WATER;
-            } else if (noiseValue < TERRAIN_THRESHOLDS.SAND) {
+            } else if (noiseValue < terrainThresholds.SAND) {
                 terrainType = TERRAIN_TYPES.SAND;
-            } else if (noiseValue < TERRAIN_THRESHOLDS.GRASS) {
+            } else if (noiseValue < terrainThresholds.GRASS) {
                 terrainType = TERRAIN_TYPES.GRASS;
             } else {
                 terrainType = TERRAIN_TYPES.MOUNTAIN;
