@@ -1,0 +1,20 @@
+{
+  "name": "hand-and-gear",
+  "version": "1.0.0",
+  "description": "A web-based factory and automation game",
+  "scripts": {
+    "start": "cd frontend && npm run start",
+    "build": "cd frontend && npm run build",
+    "dev": "cd frontend && bash ./tools/run-dev.sh",
+    "test": "cd frontend && npm test"
+  },
+  "keywords": [
+    "game",
+    "factory",
+    "automation",
+    "phaser"
+  ],
+  "author": "",
+  "license": "ISC",
+  "private": true
+}
