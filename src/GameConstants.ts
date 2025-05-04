@@ -8,14 +8,14 @@
  */
 export const GRID = {
   SIZE: 32,       // Size of each grid cell in pixels
-  MAP_WIDTH: 50,  // Width of the map in grid cells
-  MAP_HEIGHT: 50, // Height of the map in grid cells
+  MAP_WIDTH: 400,  // Width of the map in grid cells
+  MAP_HEIGHT: 400, // Height of the map in grid cells
 };
 
 /**
  * Player and movement configuration
  */
 export const PLAYER = {
-  BASE_SPEED: 200,
+  BASE_SPEED: 600,
   SAND_SPEED_MULTIPLIER: 0.7,
 };
