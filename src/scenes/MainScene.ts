@@ -3,6 +3,8 @@ import { terrainExperiments } from '../utils/TerrainExperiments';
 import { PerlinNoise } from '../utils/PerlinNoise';
 import { TerrainParams, TerrainType, TERRAIN_COLORS } from '../utils/TerrainTypes';
 import { GRID, PLAYER } from '../GameConstants';
+import { InputManager, InputAction } from '../utils/InputManager';
+import { DebugUI } from '../utils/DebugUI';
 
 export class MainScene extends Phaser.Scene {
 
@@ -10,13 +12,8 @@ export class MainScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
   private positionText!: Phaser.GameObjects.Text;
   private terrainText!: Phaser.GameObjects.Text;
-  private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-  private wasdKeys!: {
-    W: Phaser.Input.Keyboard.Key;
-    A: Phaser.Input.Keyboard.Key;
-    S: Phaser.Input.Keyboard.Key;
-    D: Phaser.Input.Keyboard.Key;
-  };
+  private inputManager!: InputManager;
+  private debugUI!: DebugUI;
 
   // Map data
   private mapData: TerrainType[][] = [];
@@ -122,36 +119,8 @@ export class MainScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, GRID.MAP_WIDTH * GRID.SIZE, GRID.MAP_HEIGHT * GRID.SIZE);
     this.cameras.main.startFollow(this.player);
     
-    // Set up keyboard input
-    if (this.input.keyboard) {
-      this.cursors = this.input.keyboard.createCursorKeys();
-      
-      // Set up WASD keys
-      this.wasdKeys = {
-        W: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
-        A: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
-        S: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
-        D: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D)
-      };
-    } else {
-      console.error('Keyboard input not available');
-      // Create dummy objects to prevent null references
-      this.cursors = {
-        up: { isDown: false } as Phaser.Input.Keyboard.Key,
-        down: { isDown: false } as Phaser.Input.Keyboard.Key,
-        left: { isDown: false } as Phaser.Input.Keyboard.Key,
-        right: { isDown: false } as Phaser.Input.Keyboard.Key,
-        space: { isDown: false } as Phaser.Input.Keyboard.Key,
-        shift: { isDown: false } as Phaser.Input.Keyboard.Key
-      };
-      
-      this.wasdKeys = {
-        W: { isDown: false } as Phaser.Input.Keyboard.Key,
-        A: { isDown: false } as Phaser.Input.Keyboard.Key,
-        S: { isDown: false } as Phaser.Input.Keyboard.Key,
-        D: { isDown: false } as Phaser.Input.Keyboard.Key
-      };
-    }
+    // Set up input manager with default bindings
+    this.inputManager = new InputManager(this);
     
     // Add text to display position
     this.positionText = this.add.text(10, 10, 'Position: 0,0', { 
@@ -168,6 +137,9 @@ export class MainScene extends Phaser.Scene {
       backgroundColor: '#000'
     });
     this.terrainText.setScrollFactor(0); // Fix to camera
+    
+    // Initialize debug UI
+    this.debugUI = new DebugUI(this, this.inputManager);
   }
 
   /**
@@ -292,7 +264,7 @@ export class MainScene extends Phaser.Scene {
     // Update terrain text
     this.terrainText.setText(`Terrain: ${terrainName}`);
     
-    // Handle player movement with the keyboard
+    // Handle player movement with the input manager
     let speed = PLAYER.BASE_SPEED;
     
     // Adjust speed based on terrain (slower in sand)
@@ -300,28 +272,27 @@ export class MainScene extends Phaser.Scene {
       speed = PLAYER.BASE_SPEED * PLAYER.SAND_SPEED_MULTIPLIER; // Slower in sand
     }
     
+    // Get movement vector from input manager
+    const movement = this.inputManager.getMovementVector();
+    
     // Calculate potential next positions
     let nextX = gridX;
     let nextY = gridY;
     let velocityX = 0;
     let velocityY = 0;
     
-    // Horizontal movement with arrow keys or A/D
-    if (this.cursors.left.isDown || this.wasdKeys.A.isDown) {
-      nextX = Math.floor((this.player.x - speed * this.game.loop.delta / 1000) / GRID.SIZE);
-      velocityX = -speed;
-    } else if (this.cursors.right.isDown || this.wasdKeys.D.isDown) {
-      nextX = Math.floor((this.player.x + speed * this.game.loop.delta / 1000) / GRID.SIZE);
-      velocityX = speed;
+    // Calculate horizontal movement
+    if (movement.x !== 0) {
+      const moveDirection = movement.x;
+      nextX = Math.floor((this.player.x + moveDirection * speed * this.game.loop.delta / 1000) / GRID.SIZE);
+      velocityX = moveDirection * speed;
     }
     
-    // Vertical movement with arrow keys or W/S
-    if (this.cursors.up.isDown || this.wasdKeys.W.isDown) {
-      nextY = Math.floor((this.player.y - speed * this.game.loop.delta / 1000) / GRID.SIZE);
-      velocityY = -speed;
-    } else if (this.cursors.down.isDown || this.wasdKeys.S.isDown) {
-      nextY = Math.floor((this.player.y + speed * this.game.loop.delta / 1000) / GRID.SIZE);
-      velocityY = speed;
+    // Calculate vertical movement
+    if (movement.y !== 0) {
+      const moveDirection = movement.y;
+      nextY = Math.floor((this.player.y + moveDirection * speed * this.game.loop.delta / 1000) / GRID.SIZE);
+      velocityY = moveDirection * speed;
     }
     
     // Check if next position is valid (within bounds and not water/mountain)
@@ -337,8 +308,22 @@ export class MainScene extends Phaser.Scene {
       this.player.setVelocityY(velocityY);
     }
     
+    // Handle additional input actions
+    if (this.inputManager.wasActionJustPressed(InputAction.INTERACT)) {
+      // For now, log interaction attempt
+      console.log(`Attempting to interact at grid position ${gridX},${gridY}`);
+    }
+    
+    if (this.inputManager.wasActionJustPressed(InputAction.TOGGLE_INVENTORY)) {
+      // For now, log inventory toggle
+      console.log('Toggling inventory');
+    }
+    
     // Update position text
     this.positionText.setText(`Position: ${gridX},${gridY}`);
+    
+    // Update debug UI
+    this.debugUI.update();
   }
   
   /**
