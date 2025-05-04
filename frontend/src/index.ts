@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
-import { TerrainExperiments } from './utils/TerrainExperiments';
+import { TerrainExperiments } from './game/terrain/TerrainExperiments';
 import { PerlinNoise } from './utils/PerlinNoise';
-import { TerrainType } from './utils/TerrainTypes';
-import { MainScene } from './scenes/MainScene';
+import { TerrainType } from './game/terrain/TerrainTypes';
+import { MainScene } from './game/scenes/MainScene';
 
 // Game configuration
 const config: Phaser.Types.Core.GameConfig = {

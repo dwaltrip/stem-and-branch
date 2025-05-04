@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
-import { terrainExperiments } from '../utils/TerrainExperiments';
-import { PerlinNoise } from '../utils/PerlinNoise';
-import { TerrainParams, TerrainType, TERRAIN_COLORS } from '../utils/TerrainTypes';
+import { terrainExperiments } from '../terrain/TerrainExperiments';
+import { PerlinNoise } from '../../utils/PerlinNoise';
+import { TerrainParams, TerrainType, TERRAIN_COLORS } from '../terrain/TerrainTypes';
 import { GRID, PLAYER } from '../GameConstants';
-import { InputManager, InputAction } from '../utils/InputManager';
-import { DebugUI } from '../utils/DebugUI';
+import { InputManager, InputAction } from '../input/InputManager';
+import { DebugUI } from '../ui/DebugUI';
 
 export class MainScene extends Phaser.Scene {
 

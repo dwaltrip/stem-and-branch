@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { InputManager, InputAction } from './InputManager';
+import { InputManager, InputAction } from '../input/InputManager';
 
 /**
  * Debug UI class for displaying input state and other debug information
