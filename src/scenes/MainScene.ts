@@ -20,20 +20,26 @@ export class MainScene extends Phaser.Scene {
 
   // Map data
   private mapData: TerrainType[][] = [];
-  private terrainTiles: Phaser.GameObjects.Rectangle[] = [];
+  
+  // TileMap objects
+  private map!: Phaser.Tilemaps.Tilemap;
+  private tileset!: Phaser.Tilemaps.Tileset;
+  private terrainLayer!: Phaser.Tilemaps.TilemapLayer;
 
   constructor() {
     super({ key: 'MainScene' });
   }
 
   preload(): void {
-    // We don't need to preload images for terrain since we'll use solid colors
+    // Load tileset for terrain
+    this.load.image('terrain_tiles', 'assets/sprites/terrain_tileset.png');
     
     // Create a simple player rectangle
+    const playerSize = Math.floor(GRID.SIZE / 3);
     const playerGraphics = this.make.graphics({ x: 0, y: 0 });
     playerGraphics.fillStyle(0xff0000); // Red color
-    playerGraphics.fillRect(0, 0, GRID.SIZE, GRID.SIZE);
-    playerGraphics.generateTexture('player', GRID.SIZE, GRID.SIZE);
+    playerGraphics.fillRect(0, 0, playerSize, playerSize);
+    playerGraphics.generateTexture('player', playerSize, playerSize);
   }
 
   create(): void {
@@ -56,10 +62,34 @@ export class MainScene extends Phaser.Scene {
       this.renderTerrain.bind(this)
     );
     
+    // Create a blank tilemap
+    this.map = this.make.tilemap({
+      tileWidth: GRID.SIZE,
+      tileHeight: GRID.SIZE,
+      width: GRID.MAP_WIDTH,
+      height: GRID.MAP_HEIGHT
+    });
+    
+    // Add the tileset image we preloaded
+    const tileset = this.map.addTilesetImage('terrain_tiles', undefined, GRID.SIZE, GRID.SIZE, 0, 0, 0);
+    if (!tileset) {
+      console.error('Failed to load tileset');
+      return;
+    }
+    this.tileset = tileset;
+    
+    // Create a blank layer for the terrain
+    const layer = this.map.createBlankLayer('terrain', this.tileset, 0, 0, GRID.MAP_WIDTH, GRID.MAP_HEIGHT);
+    if (!layer) {
+      console.error('Failed to create tilemap layer');
+      return;
+    }
+    this.terrainLayer = layer;
+    
     // Generate terrain using Perlin noise
     this.generateTerrain(terrainParams);
     
-    // Render the terrain tiles
+    // Render the terrain tiles using the tilemap
     this.renderTerrain();
     
     // Create a grid overlay for debugging (semi-transparent)
@@ -191,43 +221,39 @@ export class MainScene extends Phaser.Scene {
   }
 
   /**
-   * Render terrain tiles based on map data
+   * Render terrain tiles based on map data using TileMap
    */
   renderTerrain(): void {
-    // Clear any existing terrain tiles
-    this.terrainTiles.forEach(tile => tile.destroy());
-    this.terrainTiles = [];
+    // Skip if tilemap components are not initialized
+    if (!this.terrainLayer || !this.tileset) {
+      console.error('Tilemap components not initialized');
+      return;
+    }
     
-    // Create a container for all terrain tiles for better performance
-    const terrainContainer = this.add.container(0, 0);
+    // Map TerrainType to tilemap indices
+    // Our tileset has 4 tiles in a 2x2 grid:
+    // 0: Water (top-left), 1: Sand (top-right),
+    // 2: Grass (bottom-left), 3: Mountain (bottom-right)
+    const typeToTileIndex = {
+      [TerrainType.WATER]: 0,
+      [TerrainType.SAND]: 1,
+      [TerrainType.GRASS]: 2,
+      [TerrainType.MOUNTAIN]: 3
+    };
     
-    // Create a terrain layer
+    // Fill the tilemap with the terrain data
     for (let y = 0; y < GRID.MAP_HEIGHT; y++) {
       for (let x = 0; x < GRID.MAP_WIDTH; x++) {
         const terrainType = this.mapData[y][x];
-        const color = TERRAIN_COLORS[terrainType];
+        const tileIndex = typeToTileIndex[terrainType];
         
-        // Create a rectangle with the appropriate color
-        const tile = this.add.rectangle(
-          x * GRID.SIZE + GRID.SIZE / 2,
-          y * GRID.SIZE + GRID.SIZE / 2,
-          GRID.SIZE,
-          GRID.SIZE,
-          color
-        );
-        
-        // Add to container and store reference
-        if (terrainContainer) {
-          terrainContainer.add(tile);
-        }
-        this.terrainTiles.push(tile);
+        // Place the appropriate tile
+        this.terrainLayer.putTileAt(tileIndex, x, y);
       }
     }
     
-    // Set container to back of display list so it renders behind other objects
-    if (terrainContainer) {
-      terrainContainer.setDepth(-1);
-    }
+    // Set depth to ensure it renders behind other objects
+    this.terrainLayer.setDepth(-1);
   }
 
   update(): void {

@@ -6,6 +6,9 @@ import { TerrainParams, TerrainThresholds } from './TerrainTypes';
  * 
  * This module contains tools and utilities for experimenting with 
  * terrain generation parameters in development mode.
+ * 
+ * Updated to work with TileMap-based rendering for better performance
+ * with large maps.
  */
 export class TerrainExperiments {
   private params: TerrainParams = {
