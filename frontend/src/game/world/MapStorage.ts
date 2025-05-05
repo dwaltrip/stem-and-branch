@@ -26,7 +26,7 @@ export interface MapData {
  * Class to handle map data persistence
  */
 export class MapStorage {
-  private static readonly STORAGE_KEY = 'hand-and-gear-map';
+  private static readonly STORAGE_KEY = 'stem-and-branch--map-data';
 
   /**
    * Save map data to localStorage

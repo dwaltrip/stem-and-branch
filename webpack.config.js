@@ -31,7 +31,7 @@ module.exports = {
       }
     ],
     compress: true,
-    port: 8080,
+    port: 1337,
     hot: true
   }
 };
