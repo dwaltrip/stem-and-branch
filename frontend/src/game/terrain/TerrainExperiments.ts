@@ -75,8 +75,9 @@ export class TerrainExperiments {
     
     // Add help text
     const helpText = scene.add.text(10, 70, 
-        'Controls: Arrow Keys to move, R to regenerate map\n' + 
-        'Q/E to decrease/increase noise scale, 1/2 to decrease/increase octaves', { 
+        'Controls: Arrow Keys/WASD to move, R to regenerate map\n' + 
+        'Q/E to decrease/increase noise scale, 1/2 to decrease/increase octaves\n' +
+        'Z to save map, X to load map, N to generate new map', { 
         fontSize: '14px', 
         color: '#fff',
         backgroundColor: '#000'

@@ -5,6 +5,7 @@ import { TerrainParams, TerrainType, TERRAIN_COLORS } from '../terrain/TerrainTy
 import { GRID, PLAYER } from '../GameConstants';
 import { InputManager, InputAction } from '../input/InputManager';
 import { DebugUI } from '../ui/DebugUI';
+import { MapStorage, MapData } from '../world/MapStorage';
 
 export class MainScene extends Phaser.Scene {
 
@@ -14,9 +15,11 @@ export class MainScene extends Phaser.Scene {
   private terrainText!: Phaser.GameObjects.Text;
   private inputManager!: InputManager;
   private debugUI!: DebugUI;
+  private saveLoadText!: Phaser.GameObjects.Text;
 
   // Map data
   private mapData: TerrainType[][] = [];
+  private currentMapData: MapData | null = null;
   
   // TileMap objects
   private map!: Phaser.Tilemaps.Tilemap;
@@ -40,21 +43,34 @@ export class MainScene extends Phaser.Scene {
   }
 
   create(): void {
-    // Initialize terrain experiments with default parameters
-    const terrainParams = terrainExperiments.init(
+    // Check if we have a saved map
+    const savedMap = MapStorage.loadMap();
+    
+    // Initialize default terrain parameters
+    const defaultParams: TerrainParams = {
+      noiseScale: 0.1,
+      noiseOctaves: 4,
+      noisePersistence: 0.5,
+      noiseSeed: Math.random() * 1000,
+      terrainThresholds: {
+        WATER: 0.3,
+        SAND: 0.4,
+        GRASS: 0.8,
+        MOUNTAIN: 1.0
+      }
+    };
+    
+    // Use saved parameters if available
+    const terrainParams = savedMap ? {
+      ...savedMap.generationParameters,
+      noiseSeed: savedMap.seed
+    } : defaultParams;
+    this.currentMapData = savedMap || MapStorage.createEmptyMap();
+    
+    // Initialize terrain experiments
+    terrainExperiments.init(
       this,
-      {
-        noiseScale: 0.1,
-        noiseOctaves: 4,
-        noisePersistence: 0.5,
-        noiseSeed: Math.random() * 1000,
-        terrainThresholds: {
-          WATER: 0.3,
-          SAND: 0.4,
-          GRASS: 0.8,
-          MOUNTAIN: 1.0
-        }
-      },
+      terrainParams,
       this.generateTerrain.bind(this),
       this.renderTerrain.bind(this)
     );
@@ -83,8 +99,15 @@ export class MainScene extends Phaser.Scene {
     }
     this.terrainLayer = layer;
     
-    // Generate terrain using Perlin noise
-    this.generateTerrain(terrainParams);
+    // Either load saved terrain or generate new terrain
+    if (savedMap) {
+      this.mapData = savedMap.terrainGrid;
+      console.log('Loaded saved map');
+    } else {
+      // Generate new terrain using Perlin noise
+      this.generateTerrain(terrainParams);
+      console.log('Generated new map');
+    }
     
     // Render the terrain tiles using the tilemap
     this.renderTerrain();
@@ -140,6 +163,123 @@ export class MainScene extends Phaser.Scene {
     
     // Initialize debug UI
     this.debugUI = new DebugUI(this, this.inputManager);
+    
+    // Add save/load UI text
+    this.saveLoadText = this.add.text(10, this.game.canvas.height - 100, 
+      'Press Z to save map\nPress X to load map\nPress N for new map', { 
+      fontSize: '14px', 
+      color: '#fff',
+      backgroundColor: '#000'
+    });
+    this.saveLoadText.setScrollFactor(0);
+    
+    // Add save/load keyboard handlers
+    if (this.input.keyboard) {
+      this.input.keyboard.on('keydown-Z', () => {
+        this.saveCurrentMap();
+      });
+      
+      this.input.keyboard.on('keydown-X', () => {
+        this.loadSavedMap();
+      });
+      
+      this.input.keyboard.on('keydown-N', () => {
+        this.generateNewMap();
+      });
+    } else {
+      console.error('Keyboard input not available');
+    }
+  }
+  
+  /**
+   * Save the current map to localStorage
+   */
+  private saveCurrentMap(): void {
+    if (!this.currentMapData) {
+      this.currentMapData = MapStorage.createEmptyMap();
+    }
+    
+    // Update map data with current terrain
+    this.currentMapData.terrainGrid = this.mapData;
+    this.currentMapData.generationParameters = terrainExperiments.getParams();
+    
+    // Save to localStorage
+    const success = MapStorage.saveMap(this.currentMapData);
+    
+    // Show feedback
+    const message = success ? 'Map saved successfully!' : 'Failed to save map!';
+    this.showTemporaryMessage(message);
+  }
+  
+  /**
+   * Load saved map from localStorage
+   */
+  private loadSavedMap(): void {
+    // Check if there's a saved map
+    if (!MapStorage.hasSavedMap()) {
+      this.showTemporaryMessage('No saved map found!');
+      return;
+    }
+    
+    // Load the map
+    const loadedMap = MapStorage.loadMap();
+    if (!loadedMap) {
+      this.showTemporaryMessage('Failed to load saved map!');
+      return;
+    }
+    
+    // Update current map data
+    this.currentMapData = loadedMap;
+    this.mapData = loadedMap.terrainGrid;
+    
+    // Render the loaded map
+    this.renderTerrain();
+    
+    // Show feedback
+    this.showTemporaryMessage('Map loaded successfully!');
+  }
+  
+  /**
+   * Generate a completely new map
+   */
+  private generateNewMap(): void {
+    // Generate new seed
+    const params = terrainExperiments.getParams();
+    params.noiseSeed = Math.random() * 1000;
+    
+    // Generate new terrain
+    this.generateTerrain(params);
+    this.renderTerrain();
+    
+    // Show feedback
+    this.showTemporaryMessage('Generated new map!');
+  }
+  
+  /**
+   * Display a temporary message on screen
+   */
+  private showTemporaryMessage(message: string): void {
+    // Create or update message text
+    const messageText = this.add.text(this.cameras.main.centerX, 100, message, {
+      fontSize: '18px',
+      backgroundColor: '#000',
+      color: '#fff',
+      padding: { x: 10, y: 5 }
+    });
+    messageText.setOrigin(0.5);
+    messageText.setScrollFactor(0); // Fix to camera
+    messageText.setDepth(100); // Ensure it's on top
+    
+    // Fade out and destroy after delay
+    this.tweens.add({
+      targets: messageText,
+      alpha: 0,
+      duration: 2000,
+      ease: 'Power2',
+      onComplete: () => {
+        messageText.destroy();
+      }
+    });
   }
 
   /**
