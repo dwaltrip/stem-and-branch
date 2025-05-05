@@ -13,10 +13,9 @@ The game will be grid based with each player having a little avatar they can mov
 The game will be heavily inspired by factorio. Players can create powerful, highly scalable factories.
 
 ## Build and Development Commands
-- `npm run build` - Build for production
 - `npm run start` - Start webpack dev server (port 8080)
+- `npm run build` - Build for production / check for TypeScript errors
 - `npm test` - Run tests (currently not configured)
-- `bash ./tools/run-dev.sh` - Run simple HTTP server (port 8000)
 
 ## Code Style Guidelines
 - TypeScript with strict mode enabled
