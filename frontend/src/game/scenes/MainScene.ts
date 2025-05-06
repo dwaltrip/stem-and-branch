@@ -7,6 +7,10 @@ import { InputManager, InputAction } from '../input/InputManager';
 import { DebugUI } from '../ui/DebugUI';
 import { MapStorage, MapData } from '../world/MapStorage';
 
+import { world as ecsWorld, createPlayerEntity } from '../ecs/world';
+import { movementSystem, playerInputSystem } from '../ecs/systems/movementSystem';
+import { Position, PlayerControlled } from '../ecs/components/components';
+
 export class MainScene extends Phaser.Scene {
 
   // Game objects
@@ -16,6 +20,12 @@ export class MainScene extends Phaser.Scene {
   private inputManager!: InputManager;
   private debugUI!: DebugUI;
   private saveLoadText!: Phaser.GameObjects.Text;
+  
+  // ECS properties
+  private world = ecsWorld;
+  private playerEntity: number = -1;
+  private useEcs: boolean = true; // Toggle to switch between ECS and legacy
+  private tKeyPressed: boolean = false; // Track T key state for toggling
 
   // Map data
   private mapData: TerrainType[][] = [];
@@ -133,6 +143,10 @@ export class MainScene extends Phaser.Scene {
     // Set up camera to follow player
     this.cameras.main.setBounds(0, 0, GRID.MAP_WIDTH * GRID.SIZE, GRID.MAP_HEIGHT * GRID.SIZE);
     this.cameras.main.startFollow(this.player);
+    
+    // Create ECS player entity
+    this.playerEntity = createPlayerEntity(this.player.x, this.player.y);
+    console.log('Created player entity with ID:', this.playerEntity);
     
     this.inputManager = new InputManager(this);
     
@@ -319,39 +333,64 @@ export class MainScene extends Phaser.Scene {
   }
 
   update(): void {
+    // Calculate delta time in seconds
+    const deltaTime = this.game.loop.delta / 1000;
+    
+    // Use either ECS or legacy approach
+    if (this.useEcs) {
+      this._updateWithECS(deltaTime);
+    } else {
+      this._updateLegacy(deltaTime);
+    }
+    
+    // Toggle between ECS and legacy approaches with 'T' key
+    if (this.input.keyboard && this.input.keyboard.addKey('T').isDown) {
+      // Make sure we don't toggle every frame
+      if (!this.tKeyPressed) {
+        this.useEcs = !this.useEcs;
+        console.log(`Switched to ${this.useEcs ? 'ECS' : 'legacy'} approach`);
+        this.tKeyPressed = true;
+      }
+    } else {
+      this.tKeyPressed = false;
+    }
+    
+    // Update debug UI
+    this.debugUI.update();
+  }
+  
+  private _updateWithECS(deltaTime: number): void {
+    // Run ECS systems
+    playerInputSystem(this.world, this.inputManager);
+    movementSystem(this.world, deltaTime);
+    
+    // Get current player position from ECS
+    const playerX = Position.x[this.playerEntity];
+    const playerY = Position.y[this.playerEntity];
+    
+    // Sync Phaser object position with ECS
+    this.player.x = playerX;
+    this.player.y = playerY;
+    
+    // Calculate current grid position
+    const gridX = Math.floor(playerX / GRID.SIZE);
+    const gridY = Math.floor(playerY / GRID.SIZE);
+    
+    this.positionText.setText(`Position: ${gridX},${gridY} (ECS)`);
+    this._updateTerrainInfo(gridX, gridY);
+    this._handleAdditionalInput(gridX, gridY);
+  }
+  
+  private _updateLegacy(deltaTime: number): void {
     this.player.setVelocity(0);
     
     // Calculate current grid position
     const gridX = Math.floor(this.player.x / GRID.SIZE);
     const gridY = Math.floor(this.player.y / GRID.SIZE);
     
-    // Get current terrain type at player's position
-    let terrainType: TerrainType = TerrainType.GRASS; // Default
-    let terrainName = "Unknown";
+    this._updateTerrainInfo(gridX, gridY);
     
-    // Check if player is within map bounds
-    if (gridX >= 0 && gridX < GRID.MAP_WIDTH && gridY >= 0 && gridY < GRID.MAP_HEIGHT) {
-      terrainType = this.mapData[gridY][gridX];
-      
-      // Set terrain name based on type
-      switch (terrainType) {
-        case TerrainType.WATER:
-          terrainName = "Water";
-          break;
-        case TerrainType.SAND:
-          terrainName = "Sand";
-          break;
-        case TerrainType.GRASS:
-          terrainName = "Grass";
-          break;
-        case TerrainType.MOUNTAIN:
-          terrainName = "Mountain";
-          break;
-      }
-    }
-    
-    // Update terrain text
-    this.terrainText.setText(`Terrain: ${terrainName}`);
+    let terrainType = this._getTerrainTypeAt(gridX, gridY);
     
     let speed = PLAYER.BASE_SPEED;
     if (terrainType === TerrainType.SAND) {
@@ -368,12 +407,12 @@ export class MainScene extends Phaser.Scene {
     
     if (movement.x !== 0) {
       const moveDirection = movement.x;
-      nextX = Math.floor((this.player.x + moveDirection * speed * this.game.loop.delta / 1000) / GRID.SIZE);
+      nextX = Math.floor((this.player.x + moveDirection * speed * deltaTime) / GRID.SIZE);
       velocityX = moveDirection * speed;
     }
     if (movement.y !== 0) {
       const moveDirection = movement.y;
-      nextY = Math.floor((this.player.y + moveDirection * speed * this.game.loop.delta / 1000) / GRID.SIZE);
+      nextY = Math.floor((this.player.y + moveDirection * speed * deltaTime) / GRID.SIZE);
       velocityY = moveDirection * speed;
     }
     
@@ -389,6 +428,15 @@ export class MainScene extends Phaser.Scene {
     }
     
     // Handle additional input actions
+    this._handleAdditionalInput(gridX, gridY);
+    // Update the UI
+    this.positionText.setText(`Position: ${gridX},${gridY}`);
+  }
+  
+  /**
+   * Handle additional input actions like interact and inventory
+   */
+  private _handleAdditionalInput(gridX: number, gridY: number): void {
     if (this.inputManager.wasActionJustPressed(InputAction.INTERACT)) {
       // For now, log interaction attempt
       console.log(`Attempting to interact at grid position ${gridX},${gridY}`);
@@ -398,12 +446,36 @@ export class MainScene extends Phaser.Scene {
       // For now, log inventory toggle
       console.log('Toggling inventory');
     }
+  }
+  
+  private _updateTerrainInfo(gridX: number, gridY: number): void {
+    let terrainType = this._getTerrainTypeAt(gridX, gridY);
+    let terrainName = "Unknown";
     
-    // Update position text
-    this.positionText.setText(`Position: ${gridX},${gridY}`);
-    
-    // Update debug UI
-    this.debugUI.update();
+    switch (terrainType) {
+      case TerrainType.WATER:
+        terrainName = "Water";
+        break;
+      case TerrainType.SAND:
+        terrainName = "Sand";
+        break;
+      case TerrainType.GRASS:
+        terrainName = "Grass";
+        break;
+      case TerrainType.MOUNTAIN:
+        terrainName = "Mountain";
+        break;
+    }
+
+    this.terrainText.setText(`Terrain: ${terrainName}`);
+  }
+  
+  private _getTerrainTypeAt(gridX: number, gridY: number): TerrainType {
+    // Check if position is within map bounds
+    if (gridX >= 0 && gridX < GRID.MAP_WIDTH && gridY >= 0 && gridY < GRID.MAP_HEIGHT) {
+      return this.mapData[gridY][gridX];
+    }
+    return TerrainType.GRASS; // Default
   }
   
   // Check if grid pos is within bounds and not impassable (water/mountain)
