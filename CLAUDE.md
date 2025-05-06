@@ -18,16 +18,23 @@ The game will be heavily inspired by factorio. Players can create powerful, high
 - `npm test` - Run tests (currently not configured)
 
 ## Code Style Guidelines
+
+- Error on the side of simplicity / "hacky". It's easier to polish up later when we have more confidence about the implementation.
+- Be very judicious about introducing new abstractions / patterns, as poor or too many abstractions can severly hamstring a codebase.
+
 - TypeScript with strict mode enabled
-- Use ES2015+ features with ESNext module format
-- Maintain clear separation between terrain generation utilities and game rendering
-- Use PascalCase for enums, interfaces, and classes
-- Use camelCase for variables, functions, and methods
-- Use UPPER_CASE for constants and enum values
-- Use explicit type annotations for function parameters and return types
-- Prefer interfaces for object type definitions
-- Use enums for related constant values
+- Dont excessively comment
+    - No comments that basically just repeat what the line of code says!
+    - Only provide comments for non-obvious or particularly tricky pieces
+    - Generally, focus WHY the choice was made, not on WHAT the code does
+
 - Organize code into appropriate modules under src/ directory
-- Follow Phaser.js conventions for game scene management
+- Follow Phaser.js conventions
 - Use proper indentation (2 spaces)
-- Include JSDoc comments for exported functions/interfaces
+
+## Collaboration Guidelines and Coding Strategy
+
+- In general, lean towards asking for clarificaiton / guidance / confirmation more often than not
+- When making non-trivial changes, sketch out a skeleton of what the implementation will look like and confirm with me before writing any code
+- Check that you are sticking to the plan as you make edits. If the plan needs to be updated, lets quickly discuss before proceeding (e.g. check with me)
+- When planning larger pieces of work, break the work into smaller chunks that we can check out and make sure are good and sensible, to catch problems earlier
