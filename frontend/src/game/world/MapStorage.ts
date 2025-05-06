@@ -1,9 +1,7 @@
 import { TerrainType } from '../terrain/TerrainTypes';
 import { GRID } from '../GameConstants';
 
-/**
- * Interface defining map data structure for storage
- */
+// Data shape for maps in the game
 export interface MapData {
   width: number;
   height: number;
@@ -22,17 +20,9 @@ export interface MapData {
   };
 }
 
-/**
- * Class to handle map data persistence
- */
 export class MapStorage {
   private static readonly STORAGE_KEY = 'stem-and-branch--map-data';
 
-  /**
-   * Save map data to localStorage
-   * @param mapData Map data to save
-   * @returns True if save was successful
-   */
   public static saveMap(mapData: MapData): boolean {
     try {
       const serialized = JSON.stringify(mapData);
@@ -45,10 +35,7 @@ export class MapStorage {
     }
   }
 
-  /**
-   * Load map data from localStorage
-   * @returns Map data or null if no saved map
-   */
+  // returns Map data or null if no saved map
   public static loadMap(): MapData | null {
     try {
       const serialized = localStorage.getItem(this.STORAGE_KEY);
@@ -66,18 +53,10 @@ export class MapStorage {
     }
   }
 
-  /**
-   * Check if a saved map exists
-   * @returns True if a saved map exists
-   */
   public static hasSavedMap(): boolean {
     return localStorage.getItem(this.STORAGE_KEY) !== null;
   }
 
-  /**
-   * Delete saved map
-   * @returns True if delete was successful
-   */
   public static deleteSavedMap(): boolean {
     try {
       localStorage.removeItem(this.STORAGE_KEY);
@@ -89,10 +68,6 @@ export class MapStorage {
     }
   }
 
-  /**
-   * Create an empty map data structure
-   * @returns Empty map data
-   */
   public static createEmptyMap(): MapData {
     const terrainGrid: TerrainType[][] = Array(GRID.MAP_HEIGHT)
       .fill(0)

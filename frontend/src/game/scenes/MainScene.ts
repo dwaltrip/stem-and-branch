@@ -31,7 +31,6 @@ export class MainScene extends Phaser.Scene {
   }
 
   preload(): void {
-    // Load tileset for terrain
     this.load.image('terrain_tiles', 'assets/sprites/terrain_tileset.png');
     
     // Create a simple player rectangle
@@ -43,10 +42,8 @@ export class MainScene extends Phaser.Scene {
   }
 
   create(): void {
-    // Check if we have a saved map
     const savedMap = MapStorage.loadMap();
     
-    // Initialize default terrain parameters
     const defaultParams: TerrainParams = {
       noiseScale: 0.1,
       noiseOctaves: 4,
@@ -75,7 +72,6 @@ export class MainScene extends Phaser.Scene {
       this.renderTerrain.bind(this)
     );
     
-    // Create a blank tilemap
     this.map = this.make.tilemap({
       tileWidth: GRID.SIZE,
       tileHeight: GRID.SIZE,
@@ -83,7 +79,6 @@ export class MainScene extends Phaser.Scene {
       height: GRID.MAP_HEIGHT
     });
     
-    // Add the tileset image we preloaded
     const tileset = this.map.addTilesetImage('terrain_tiles', undefined, GRID.SIZE, GRID.SIZE, 0, 0, 0);
     if (!tileset) {
       console.error('Failed to load tileset');
@@ -99,17 +94,14 @@ export class MainScene extends Phaser.Scene {
     }
     this.terrainLayer = layer;
     
-    // Either load saved terrain or generate new terrain
     if (savedMap) {
       this.mapData = savedMap.terrainGrid;
       console.log('Loaded saved map');
     } else {
-      // Generate new terrain using Perlin noise
       this.generateTerrain(terrainParams);
       console.log('Generated new map');
     }
     
-    // Render the terrain tiles using the tilemap
     this.renderTerrain();
     
     // Create a grid overlay for debugging (semi-transparent)
@@ -142,10 +134,9 @@ export class MainScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, GRID.MAP_WIDTH * GRID.SIZE, GRID.MAP_HEIGHT * GRID.SIZE);
     this.cameras.main.startFollow(this.player);
     
-    // Set up input manager with default bindings
     this.inputManager = new InputManager(this);
     
-    // Add text to display position
+    // Display player position in UI
     this.positionText = this.add.text(10, 10, 'Position: 0,0', { 
       fontSize: '16px', 
       color: '#fff',
@@ -153,7 +144,7 @@ export class MainScene extends Phaser.Scene {
     });
     this.positionText.setScrollFactor(0); // Fix to camera
     
-    // Add terrain info text
+    // Display terrain info for currrent tile (grass is placeholder)
     this.terrainText = this.add.text(10, 40, 'Terrain: Grass', { 
       fontSize: '16px', 
       color: '#fff',
@@ -173,7 +164,6 @@ export class MainScene extends Phaser.Scene {
     });
     this.saveLoadText.setScrollFactor(0);
     
-    // Add save/load keyboard handlers
     if (this.input.keyboard) {
       this.input.keyboard.on('keydown-Z', () => {
         this.saveCurrentMap();
@@ -191,9 +181,7 @@ export class MainScene extends Phaser.Scene {
     }
   }
   
-  /**
-   * Save the current map to localStorage
-   */
+  // Save the current map to localStorage
   private saveCurrentMap(): void {
     if (!this.currentMapData) {
       this.currentMapData = MapStorage.createEmptyMap();
@@ -203,63 +191,40 @@ export class MainScene extends Phaser.Scene {
     this.currentMapData.terrainGrid = this.mapData;
     this.currentMapData.generationParameters = terrainExperiments.getParams();
     
-    // Save to localStorage
     const success = MapStorage.saveMap(this.currentMapData);
-    
-    // Show feedback
     const message = success ? 'Map saved successfully!' : 'Failed to save map!';
+    // Show result to user
     this.showTemporaryMessage(message);
   }
   
-  /**
-   * Load saved map from localStorage
-   */
+  // Load saved map from localStorage
   private loadSavedMap(): void {
-    // Check if there's a saved map
     if (!MapStorage.hasSavedMap()) {
       this.showTemporaryMessage('No saved map found!');
       return;
     }
-    
-    // Load the map
     const loadedMap = MapStorage.loadMap();
     if (!loadedMap) {
       this.showTemporaryMessage('Failed to load saved map!');
       return;
     }
     
-    // Update current map data
     this.currentMapData = loadedMap;
     this.mapData = loadedMap.terrainGrid;
-    
-    // Render the loaded map
     this.renderTerrain();
-    
-    // Show feedback
     this.showTemporaryMessage('Map loaded successfully!');
   }
   
-  /**
-   * Generate a completely new map
-   */
   private generateNewMap(): void {
-    // Generate new seed
     const params = terrainExperiments.getParams();
     params.noiseSeed = Math.random() * 1000;
     
-    // Generate new terrain
     this.generateTerrain(params);
     this.renderTerrain();
-    
-    // Show feedback
     this.showTemporaryMessage('Generated new map!');
   }
   
-  /**
-   * Display a temporary message on screen
-   */
   private showTemporaryMessage(message: string): void {
-    // Create or update message text
     const messageText = this.add.text(this.cameras.main.centerX, 100, message, {
       fontSize: '18px',
       backgroundColor: '#000',
@@ -282,14 +247,12 @@ export class MainScene extends Phaser.Scene {
     });
   }
 
-  /**
-   * Generate terrain using Perlin noise
-   */
+  // Generate terrain using Perlin noise
   generateTerrain(params: TerrainParams): void {
     // Get parameters from passed object or use defaults
     const {
       noiseSeed = Math.random() * 1000,
-      noiseScale = 0.1,
+      noiseScale = 0.1, // Scale for noise (ranges from 0 to 1)
       noiseOctaves = 4,
       noisePersistence = 0.5,
       terrainThresholds = {
@@ -300,21 +263,16 @@ export class MainScene extends Phaser.Scene {
       }
     } = params || {};
     
-    // Initialize Perlin noise generator with seed
     const perlin = new PerlinNoise(noiseSeed);
     
-    // Initialize the map data array
     this.mapData = Array(GRID.MAP_HEIGHT).fill(0).map(() => Array(GRID.MAP_WIDTH).fill(TerrainType.GRASS));
     
-    // Generate terrain using Perlin noise
     for (let y = 0; y < GRID.MAP_HEIGHT; y++) {
       for (let x = 0; x < GRID.MAP_WIDTH; x++) {
-        // Get noise value at this coordinate (scaled and normalized to 0-1)
         const nx = x * noiseScale;
         const ny = y * noiseScale;
         const noiseValue = perlin.normalized(nx, ny, noiseOctaves, noisePersistence);
         
-        // Determine terrain type based on noise value
         let terrainType: TerrainType;
         if (noiseValue < terrainThresholds.WATER) {
           terrainType = TerrainType.WATER;
@@ -326,17 +284,12 @@ export class MainScene extends Phaser.Scene {
           terrainType = TerrainType.MOUNTAIN;
         }
         
-        // Store terrain type in map data
         this.mapData[y][x] = terrainType;
       }
     }
   }
 
-  /**
-   * Render terrain tiles based on map data using TileMap
-   */
   renderTerrain(): void {
-    // Skip if tilemap components are not initialized
     if (!this.terrainLayer || !this.tileset) {
       console.error('Tilemap components not initialized');
       return;
@@ -353,13 +306,10 @@ export class MainScene extends Phaser.Scene {
       [TerrainType.MOUNTAIN]: 3
     };
     
-    // Fill the tilemap with the terrain data
     for (let y = 0; y < GRID.MAP_HEIGHT; y++) {
       for (let x = 0; x < GRID.MAP_WIDTH; x++) {
         const terrainType = this.mapData[y][x];
         const tileIndex = typeToTileIndex[terrainType];
-        
-        // Place the appropriate tile
         this.terrainLayer.putTileAt(tileIndex, x, y);
       }
     }
@@ -369,7 +319,6 @@ export class MainScene extends Phaser.Scene {
   }
 
   update(): void {
-    // Reset player velocity
     this.player.setVelocity(0);
     
     // Calculate current grid position
@@ -404,15 +353,11 @@ export class MainScene extends Phaser.Scene {
     // Update terrain text
     this.terrainText.setText(`Terrain: ${terrainName}`);
     
-    // Handle player movement with the input manager
     let speed = PLAYER.BASE_SPEED;
-    
-    // Adjust speed based on terrain (slower in sand)
     if (terrainType === TerrainType.SAND) {
       speed = PLAYER.BASE_SPEED * PLAYER.SAND_SPEED_MULTIPLIER; // Slower in sand
     }
     
-    // Get movement vector from input manager
     const movement = this.inputManager.getMovementVector();
     
     // Calculate potential next positions
@@ -421,14 +366,11 @@ export class MainScene extends Phaser.Scene {
     let velocityX = 0;
     let velocityY = 0;
     
-    // Calculate horizontal movement
     if (movement.x !== 0) {
       const moveDirection = movement.x;
       nextX = Math.floor((this.player.x + moveDirection * speed * this.game.loop.delta / 1000) / GRID.SIZE);
       velocityX = moveDirection * speed;
     }
-    
-    // Calculate vertical movement
     if (movement.y !== 0) {
       const moveDirection = movement.y;
       nextY = Math.floor((this.player.y + moveDirection * speed * this.game.loop.delta / 1000) / GRID.SIZE);
@@ -439,11 +381,9 @@ export class MainScene extends Phaser.Scene {
     const canMoveX = this.isValidPosition(nextX, gridY);
     const canMoveY = this.isValidPosition(gridX, nextY);
     
-    // Apply movement if valid
     if (canMoveX) {
       this.player.setVelocityX(velocityX);
     }
-    
     if (canMoveY) {
       this.player.setVelocityY(velocityY);
     }
@@ -466,22 +406,14 @@ export class MainScene extends Phaser.Scene {
     this.debugUI.update();
   }
   
-  /**
-   * Checks if a position is valid for player movement
-   * @param gridX X coordinate in grid cells
-   * @param gridY Y coordinate in grid cells
-   * @returns Whether the position is valid (within bounds and not water/mountain)
-   */
+  // Check if grid pos is within bounds and not impassable (water/mountain)
   private isValidPosition(gridX: number, gridY: number): boolean {
     // Check bounds
     if (gridX < 0 || gridX >= GRID.MAP_WIDTH || gridY < 0 || gridY >= GRID.MAP_HEIGHT) {
       return false;
     }
     
-    // Check terrain type
     const terrainType = this.mapData[gridY][gridX];
-    
-    // Cannot move into water or mountains
     return terrainType !== TerrainType.WATER && terrainType !== TerrainType.MOUNTAIN;
   }
 }

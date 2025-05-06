@@ -6,9 +6,6 @@ import { TerrainParams, TerrainThresholds } from './TerrainTypes';
  * 
  * This module contains tools and utilities for experimenting with 
  * terrain generation parameters in development mode.
- * 
- * Updated to work with TileMap-based rendering for better performance
- * with large maps.
  */
 export class TerrainExperiments {
   private params: TerrainParams = {
@@ -28,41 +25,23 @@ export class TerrainExperiments {
   private generateTerrainFn: ((params: TerrainParams) => void) | null = null;
   private renderTerrainFn: (() => void) | null = null;
 
-  /**
-   * Initialize the experiments module
-   * @param scene The Phaser scene
-   * @param initialParams Initial terrain parameters
-   * @param generateFn Function to generate terrain
-   * @param renderFn Function to render terrain
-   */
   public init(
     scene: Scene, 
     initialParams: Partial<TerrainParams> = {},
     generateFn: (params: TerrainParams) => void,
     renderFn: () => void
   ): TerrainParams {
-    // Store reference to the game scene
     this.gameScene = scene;
-    
-    // Store reference to generation functions
     this.generateTerrainFn = generateFn;
     this.renderTerrainFn = renderFn;
     
     // Initialize parameters
     this.params = { ...this.params, ...initialParams };
-    
-    // Set up UI for parameter display
     this.setupUI(scene);
-    
-    // Set up keyboard controls
     this.setupControls(scene);
-    
     return this.params;
   }
 
-  /**
-   * Set up the UI for displaying parameters
-   */
   private setupUI(scene: Scene): void {
     // Add noise parameters text
     const noiseText = scene.add.text(10, scene.game.canvas.height - 70, 
@@ -89,21 +68,17 @@ export class TerrainExperiments {
     (scene as any).helpText = helpText;
   }
 
-  /**
-   * Set up keyboard controls for adjusting parameters
-   */
+  // Set up keyboard controls for adjusting parameters
   private setupControls(scene: Scene): void {
     if (!scene.input || !scene.input.keyboard) {
       console.error('Keyboard input not available');
       return;
     }
     
-    // Add keys for map controls
+    // Generate a new map
     scene.input.keyboard.on('keydown-R', () => {
       console.log('Regenerating map...');
-      // Generate new seed
       this.params.noiseSeed = Math.random() * 1000;
-      // Trigger regeneration
       this.regenerateTerrain();
     });
     
@@ -112,7 +87,6 @@ export class TerrainExperiments {
       this.params.noiseScale = Math.max(0.01, this.params.noiseScale - 0.01);
       this.regenerateTerrain();
     });
-    
     scene.input.keyboard.on('keydown-E', () => {
       this.params.noiseScale = this.params.noiseScale + 0.01;
       this.regenerateTerrain();
@@ -123,57 +97,42 @@ export class TerrainExperiments {
       this.params.noiseOctaves = Math.max(1, this.params.noiseOctaves - 1);
       this.regenerateTerrain();
     });
-    
     scene.input.keyboard.on('keydown-TWO', () => {
       this.params.noiseOctaves = this.params.noiseOctaves + 1;
       this.regenerateTerrain();
     });
   }
 
-  /**
-   * Helper function to create parameter display string
-   */
   private getParamsDisplay(): string {
     return `Noise Settings: Scale=${this.params.noiseScale.toFixed(3)}, ` +
            `Octaves=${this.params.noiseOctaves}, ` + 
            `Seed=${this.params.noiseSeed.toFixed(2)}`;
   }
 
-  /**
-   * Trigger terrain regeneration and UI update
-   */
   public regenerateTerrain(): void {
     if (!this.gameScene || !this.generateTerrainFn || !this.renderTerrainFn) {
       console.error('Scene or terrain functions not available');
       return;
     }
     
-    // Call the regenerate functions
     this.generateTerrainFn(this.params);
     this.renderTerrainFn();
     
-    // Update the display
+    // Update the UI
     const noiseText = (this.gameScene as any).noiseText;
     if (noiseText) {
       noiseText.setText(this.getParamsDisplay());
     }
   }
 
-  /**
-   * Get current terrain parameters
-   */
   public getParams(): TerrainParams {
     return this.params;
   }
 
-  /**
-   * Generate a new terrain with current parameters
-   */
   public generateNew(): TerrainParams {
     this.regenerateTerrain();
     return this.params;
   }
 }
 
-// Create a singleton instance
 export const terrainExperiments = new TerrainExperiments();

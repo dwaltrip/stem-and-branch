@@ -1,8 +1,5 @@
 import Phaser from 'phaser';
 
-/**
- * Action types that can be triggered by inputs
- */
 export enum InputAction {
   MOVE_UP,
   MOVE_DOWN,
@@ -14,9 +11,6 @@ export enum InputAction {
   CANCEL
 }
 
-/**
- * Input binding configuration interface
- */
 export interface InputBindings {
   [InputAction.MOVE_UP]: number[];
   [InputAction.MOVE_DOWN]: number[];
@@ -28,9 +22,6 @@ export interface InputBindings {
   [InputAction.CANCEL]: number[];
 }
 
-/**
- * Default key bindings
- */
 export const DEFAULT_BINDINGS: InputBindings = {
   [InputAction.MOVE_UP]: [
     Phaser.Input.Keyboard.KeyCodes.UP,
@@ -63,35 +54,25 @@ export const DEFAULT_BINDINGS: InputBindings = {
   ]
 };
 
-/**
- * Input Manager class to handle input abstraction
- */
 export class InputManager {
   private scene: Phaser.Scene;
   private keyMap: Map<InputAction, Phaser.Input.Keyboard.Key[]> = new Map();
   private bindings: InputBindings;
   
-  /**
-   * Create a new InputManager
-   * @param scene Reference to the scene this input manager belongs to
-   * @param bindings Optional custom key bindings
-   */
+  // scene: Reference to the scene this input manager belongs to
+  // bindings: Optional custom key bindings
   constructor(scene: Phaser.Scene, bindings: InputBindings = DEFAULT_BINDINGS) {
     this.scene = scene;
     this.bindings = bindings;
     this.initialize();
   }
   
-  /**
-   * Initialize all key bindings
-   */
   private initialize(): void {
     if (!this.scene.input.keyboard) {
       console.error('Keyboard input not available');
       return;
     }
     
-    // Initialize all action bindings
     Object.values(InputAction)
       .filter(action => typeof action === 'number')
       .forEach(action => {
@@ -112,42 +93,25 @@ export class InputManager {
       });
   }
   
-  /**
-   * Check if an action is currently active (any of its keys are pressed)
-   * @param action The action to check
-   * @returns Whether the action is active
-   */
+  // Check if an action is currently active (any of its keys are pressed)
   isActionActive(action: InputAction): boolean {
     const keys = this.keyMap.get(action);
-    
     if (!keys || keys.length === 0) {
       return false;
     }
-    
-    // Return true if any of the keys for this action are down
     return keys.some(key => key.isDown);
   }
   
-  /**
-   * Check if an action was just pressed this frame
-   * @param action The action to check
-   * @returns Whether the action was just pressed
-   */
+  // Check if an action was just pressed this frame
   wasActionJustPressed(action: InputAction): boolean {
     const keys = this.keyMap.get(action);
-    
     if (!keys || keys.length === 0) {
       return false;
     }
-    
-    // Return true if any of the keys for this action were just pressed
     return keys.some(key => Phaser.Input.Keyboard.JustDown(key));
   }
   
-  /**
-   * Get all active movement as a vector
-   * @returns Object with x and y components representing movement direction
-   */
+  // Get all active movement as a vector
   getMovementVector(): { x: number, y: number } {
     const movement = { x: 0, y: 0 };
     
@@ -166,10 +130,8 @@ export class InputManager {
     return movement;
   }
   
-  /**
-   * Update bindings at runtime
-   * @param newBindings New input bindings to use
-   */
+  // Update bindings at runtime (e.g. user changes settings)
+  // ### NOT IN USE ### -- may be used in the future....
   updateBindings(newBindings: InputBindings): void {
     // Clean up existing key bindings
     this.keyMap.forEach(keys => {
@@ -180,7 +142,6 @@ export class InputManager {
     
     this.keyMap.clear();
     this.bindings = newBindings;
-    
     // Re-initialize with new bindings
     this.initialize();
   }

@@ -1,4 +1,3 @@
-// Define terrain types enum
 export enum TerrainType {
   WATER = 0,
   SAND = 1,
@@ -6,7 +5,6 @@ export enum TerrainType {
   MOUNTAIN = 3
 }
 
-// Define terrain thresholds interface
 export interface TerrainThresholds {
   WATER: number;
   SAND: number;
@@ -14,7 +12,6 @@ export interface TerrainThresholds {
   MOUNTAIN: number;
 }
 
-// Define terrain parameters interface
 export interface TerrainParams {
   noiseScale: number;
   noiseOctaves: number;
@@ -23,7 +20,6 @@ export interface TerrainParams {
   terrainThresholds: TerrainThresholds;
 }
 
-// Define terrain colors
 export const TERRAIN_COLORS: Record<TerrainType, number> = {
   [TerrainType.WATER]: 0x1a75ff,    // Bright blue
   [TerrainType.SAND]: 0xffd700,     // Gold/yellow
