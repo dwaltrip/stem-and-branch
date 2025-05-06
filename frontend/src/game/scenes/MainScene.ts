@@ -69,7 +69,7 @@ export class MainScene extends Phaser.Scene {
       this,
       terrainParams,
       this.generateTerrain.bind(this),
-      this.renderTerrain.bind(this)
+      this.renderTerrainTiles.bind(this)
     );
     
     this.map = this.make.tilemap({
@@ -102,7 +102,7 @@ export class MainScene extends Phaser.Scene {
       console.log('Generated new map');
     }
     
-    this.renderTerrain();
+    this.renderTerrainTiles();
     
     // Create a grid overlay for debugging (semi-transparent)
     this.add.grid(
@@ -211,7 +211,7 @@ export class MainScene extends Phaser.Scene {
     
     this.currentMapData = loadedMap;
     this.mapData = loadedMap.terrainGrid;
-    this.renderTerrain();
+    this.renderTerrainTiles();
     this.showTemporaryMessage('Map loaded successfully!');
   }
   
@@ -220,7 +220,7 @@ export class MainScene extends Phaser.Scene {
     params.noiseSeed = Math.random() * 1000;
     
     this.generateTerrain(params);
-    this.renderTerrain();
+    this.renderTerrainTiles();
     this.showTemporaryMessage('Generated new map!');
   }
   
@@ -289,7 +289,7 @@ export class MainScene extends Phaser.Scene {
     }
   }
 
-  renderTerrain(): void {
+  renderTerrainTiles(): void {
     if (!this.terrainLayer || !this.tileset) {
       console.error('Tilemap components not initialized');
       return;

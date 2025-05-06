@@ -23,7 +23,7 @@ export class TerrainExperiments {
 
   private gameScene: Scene | null = null;
   private generateTerrainFn: ((params: TerrainParams) => void) | null = null;
-  private renderTerrainFn: (() => void) | null = null;
+  private renderTerrainTilesFn: (() => void) | null = null;
 
   public init(
     scene: Scene, 
@@ -33,7 +33,7 @@ export class TerrainExperiments {
   ): TerrainParams {
     this.gameScene = scene;
     this.generateTerrainFn = generateFn;
-    this.renderTerrainFn = renderFn;
+    this.renderTerrainTilesFn = renderFn;
     
     // Initialize parameters
     this.params = { ...this.params, ...initialParams };
@@ -110,13 +110,13 @@ export class TerrainExperiments {
   }
 
   public regenerateTerrain(): void {
-    if (!this.gameScene || !this.generateTerrainFn || !this.renderTerrainFn) {
+    if (!this.gameScene || !this.generateTerrainFn || !this.renderTerrainTilesFn) {
       console.error('Scene or terrain functions not available');
       return;
     }
     
     this.generateTerrainFn(this.params);
-    this.renderTerrainFn();
+    this.renderTerrainTilesFn();
     
     // Update the UI
     const noiseText = (this.gameScene as any).noiseText;
