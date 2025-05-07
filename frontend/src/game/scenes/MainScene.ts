@@ -24,8 +24,6 @@ export class MainScene extends Phaser.Scene {
   // ECS properties
   private world = ecsWorld;
   private playerEntity: number = -1;
-  private useEcs: boolean = true; // Toggle to switch between ECS and legacy
-  private tKeyPressed: boolean = false; // Track T key state for toggling
 
   // Map data
   private mapData: TerrainType[][] = [];
@@ -336,33 +334,15 @@ export class MainScene extends Phaser.Scene {
     // Calculate delta time in seconds
     const deltaTime = this.game.loop.delta / 1000;
     
-    // Use either ECS or legacy approach
-    if (this.useEcs) {
-      this._updateWithECS(deltaTime);
-    } else {
-      this._updateLegacy(deltaTime);
-    }
+    // Create terrain provider for the movement system
+    const terrainProvider = {
+      getTerrainAt: this._getTerrainTypeAt.bind(this),
+      isValidPosition: this.isValidPosition.bind(this)
+    };
     
-    // Toggle between ECS and legacy approaches with 'T' key
-    if (this.input.keyboard && this.input.keyboard.addKey('T').isDown) {
-      // Make sure we don't toggle every frame
-      if (!this.tKeyPressed) {
-        this.useEcs = !this.useEcs;
-        console.log(`Switched to ${this.useEcs ? 'ECS' : 'legacy'} approach`);
-        this.tKeyPressed = true;
-      }
-    } else {
-      this.tKeyPressed = false;
-    }
-    
-    // Update debug UI
-    this.debugUI.update();
-  }
-  
-  private _updateWithECS(deltaTime: number): void {
     // Run ECS systems
     playerInputSystem(this.world, this.inputManager);
-    movementSystem(this.world, deltaTime);
+    movementSystem(this.world, deltaTime, terrainProvider);
     
     // Get current player position from ECS
     const playerX = Position.x[this.playerEntity];
@@ -376,61 +356,13 @@ export class MainScene extends Phaser.Scene {
     const gridX = Math.floor(playerX / GRID.SIZE);
     const gridY = Math.floor(playerY / GRID.SIZE);
     
-    this.positionText.setText(`Position: ${gridX},${gridY} (ECS)`);
-    this._updateTerrainInfo(gridX, gridY);
-    this._handleAdditionalInput(gridX, gridY);
-  }
-  
-  private _updateLegacy(deltaTime: number): void {
-    this.player.setVelocity(0);
-    
-    // Calculate current grid position
-    const gridX = Math.floor(this.player.x / GRID.SIZE);
-    const gridY = Math.floor(this.player.y / GRID.SIZE);
-    
-    this._updateTerrainInfo(gridX, gridY);
-    
-    let terrainType = this._getTerrainTypeAt(gridX, gridY);
-    
-    let speed = PLAYER.BASE_SPEED;
-    if (terrainType === TerrainType.SAND) {
-      speed = PLAYER.BASE_SPEED * PLAYER.SAND_SPEED_MULTIPLIER; // Slower in sand
-    }
-    
-    const movement = this.inputManager.getMovementVector();
-    
-    // Calculate potential next positions
-    let nextX = gridX;
-    let nextY = gridY;
-    let velocityX = 0;
-    let velocityY = 0;
-    
-    if (movement.x !== 0) {
-      const moveDirection = movement.x;
-      nextX = Math.floor((this.player.x + moveDirection * speed * deltaTime) / GRID.SIZE);
-      velocityX = moveDirection * speed;
-    }
-    if (movement.y !== 0) {
-      const moveDirection = movement.y;
-      nextY = Math.floor((this.player.y + moveDirection * speed * deltaTime) / GRID.SIZE);
-      velocityY = moveDirection * speed;
-    }
-    
-    // Check if next position is valid (within bounds and not water/mountain)
-    const canMoveX = this.isValidPosition(nextX, gridY);
-    const canMoveY = this.isValidPosition(gridX, nextY);
-    
-    if (canMoveX) {
-      this.player.setVelocityX(velocityX);
-    }
-    if (canMoveY) {
-      this.player.setVelocityY(velocityY);
-    }
-    
-    // Handle additional input actions
-    this._handleAdditionalInput(gridX, gridY);
-    // Update the UI
+    // Update UI
     this.positionText.setText(`Position: ${gridX},${gridY}`);
+    this._updateTerrainInfo(gridX, gridY);
+    this._handleAdditionalInput(gridX, gridY);
+    
+    // Update debug UI
+    this.debugUI.update();
   }
   
   /**
