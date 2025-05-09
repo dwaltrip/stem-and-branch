@@ -16,6 +16,8 @@ export const GRID = {
  * Player and movement configuration
  */
 export const PLAYER = {
-  BASE_SPEED: 600,
-  SAND_SPEED_MULTIPLIER: 0.7,
+  // BASE_SPEED: 600,
+  BASE_SPEED: 1000,
+  // SAND_SPEED_MULTIPLIER: 0.7,
+  SAND_SPEED_MULTIPLIER: 1,
 };

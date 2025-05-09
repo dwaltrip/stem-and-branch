@@ -127,6 +127,13 @@ export class InputManager {
       movement.y = 1;
     }
     
+    // Normalize diagonal movement to maintain consistent speed
+    if (movement.x !== 0 && movement.y !== 0) {
+      // Use approx. 0.7071 (1/√2) to normalize the vector
+      movement.x *= 0.7071;
+      movement.y *= 0.7071;
+    }
+    
     return movement;
   }
   
