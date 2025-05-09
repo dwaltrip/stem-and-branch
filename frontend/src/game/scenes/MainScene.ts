@@ -276,8 +276,7 @@ export class MainScene extends Phaser.Scene {
     } = params || {};
     
     const perlin = new PerlinNoise(noiseSeed);
-    
-    this.mapData = Array(GRID.MAP_HEIGHT).fill(0).map(() => Array(GRID.MAP_WIDTH).fill(TerrainType.GRASS));
+    const mapData = Array(GRID.MAP_HEIGHT).fill(0).map(() => Array(GRID.MAP_WIDTH).fill(TerrainType.GRASS));
     
     for (let y = 0; y < GRID.MAP_HEIGHT; y++) {
       for (let x = 0; x < GRID.MAP_WIDTH; x++) {
@@ -291,14 +290,21 @@ export class MainScene extends Phaser.Scene {
         } else if (noiseValue < terrainThresholds.SAND) {
           terrainType = TerrainType.SAND;
         } else if (noiseValue < terrainThresholds.GRASS) {
-          terrainType = TerrainType.GRASS;
+          if (Math.random() < 0.05) {
+            terrainType = TerrainType.IRON_ORE;
+          }
+          else {
+            terrainType = TerrainType.GRASS;
+          }
         } else {
           terrainType = TerrainType.MOUNTAIN;
         }
         
-        this.mapData[y][x] = terrainType;
+        mapData[y][x] = terrainType;
       }
     }
+
+    this.mapData = mapData;
   }
 
   renderTerrainTiles(): void {
@@ -308,14 +314,13 @@ export class MainScene extends Phaser.Scene {
     }
     
     // Map TerrainType to tilemap indices
-    // Our tileset has 4 tiles in a 2x2 grid:
-    // 0: Water (top-left), 1: Sand (top-right),
-    // 2: Grass (bottom-left), 3: Mountain (bottom-right)
     const typeToTileIndex = {
       [TerrainType.WATER]: 0,
       [TerrainType.SAND]: 1,
-      [TerrainType.GRASS]: 2,
-      [TerrainType.MOUNTAIN]: 3
+      [TerrainType.IRON_ORE]: 2,
+      [TerrainType.GRASS]: 3,
+      [TerrainType.MOUNTAIN]: 4,
+      [5]: 5,
     };
     
     for (let y = 0; y < GRID.MAP_HEIGHT; y++) {
@@ -396,6 +401,9 @@ export class MainScene extends Phaser.Scene {
         break;
       case TerrainType.MOUNTAIN:
         terrainName = "Mountain";
+        break;
+      case TerrainType.IRON_ORE:
+        terrainName = "Iron Ore";
         break;
     }
 
