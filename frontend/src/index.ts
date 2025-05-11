@@ -24,15 +24,22 @@ const config: Phaser.Types.Core.GameConfig = {
 // Initialize the game with our configuration
 const game = new Phaser.Game(config);
 
-// Add event listeners for window resizing
 window.addEventListener('resize', () => {
-    if (game) {
-        // Adjust the game size to fit the window
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-        game.scale.resize(width, height);
-    }
+  resizeToFit();
 });
+window.document.addEventListener('DOMContentLoaded', () => {
+  resizeToFit();
+});
+
+function resizeToFit() {
+  if (game) {
+    // Adjust the game size to fit the window
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    game.scale.resize(width, height);
+  }
+}
+
 
 // Make terrain generation available globally for debugging
 (window as any).game = game;
