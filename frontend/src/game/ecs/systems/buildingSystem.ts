@@ -33,7 +33,7 @@ export function buildingProductionSystem(world: IWorld, deltaTime: number, terra
     const gridY = Building.gridY[entity];
     
     // Get building definition
-    const definition = BUILDING_DEFINITIONS[buildingType];
+    const definition = BUILDING_DEFINITIONS[buildingType as BuildingType];
     
     // Mining drills should only work on appropriate terrain
     if (buildingType === BuildingType.MINING_DRILL) {

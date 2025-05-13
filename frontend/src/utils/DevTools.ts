@@ -1,6 +1,6 @@
 import { world } from '../game/ecs/world';
 import { modifyPlayerResources, setPlayerResources } from '../game/ecs/systems/resourceSystem';
-import { BuildingType } from '../game/ecs/components/components';
+import { BuildingType, Building } from '../game/ecs/components/components';
 import { addBuilding, removeBuilding, getBuildingAt, productionBuildingQuery } from '../game/ecs/systems/buildingSystem';
 
 // Reference to MainScene instance for terrain access
