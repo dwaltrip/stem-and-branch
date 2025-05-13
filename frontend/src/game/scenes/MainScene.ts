@@ -9,7 +9,8 @@ import { MapStorage, MapData } from '../world/MapStorage';
 
 import { world as ecsWorld, createPlayerEntity } from '../ecs/world';
 import { movementSystem, playerInputSystem } from '../ecs/systems/movementSystem';
-import { Position, PlayerControlled } from '../ecs/components/components';
+import { getPlayerResources, modifyPlayerResources } from '../ecs/systems/resourceSystem';
+import { Position, PlayerControlled, Resources } from '../ecs/components/components';
 
 export class MainScene extends Phaser.Scene {
 
@@ -17,6 +18,7 @@ export class MainScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
   private positionText!: Phaser.GameObjects.Text;
   private terrainText!: Phaser.GameObjects.Text;
+  private resourcesText!: Phaser.GameObjects.Text;
   private inputManager!: InputManager;
   private debugUI!: DebugUI;
   private saveLoadText!: Phaser.GameObjects.Text;
@@ -157,13 +159,21 @@ export class MainScene extends Phaser.Scene {
     this.positionText.setScrollFactor(0); // Fix to camera
     
     // Display terrain info for currrent tile (grass is placeholder)
-    this.terrainText = this.add.text(10, 40, 'Terrain: Grass', { 
-      fontSize: '16px', 
+    this.terrainText = this.add.text(10, 40, 'Terrain: Grass', {
+      fontSize: '16px',
       color: '#fff',
       backgroundColor: '#000'
     });
     this.terrainText.setScrollFactor(0); // Fix to camera
-    
+
+    // Display player resources
+    this.resourcesText = this.add.text(10, 130, 'Resources: Iron Ore: 0', {
+      fontSize: '16px',
+      color: '#fff',
+      backgroundColor: '#000'
+    });
+    this.resourcesText.setScrollFactor(0); // Fix to camera
+
     // Initialize debug UI
     this.debugUI = new DebugUI(this, this.inputManager);
     
@@ -364,8 +374,9 @@ export class MainScene extends Phaser.Scene {
     // Update UI
     this.positionText.setText(`Position: ${gridX},${gridY}`);
     this._updateTerrainInfo(gridX, gridY);
+    this._updateResourcesDisplay();
     this._handleAdditionalInput(gridX, gridY);
-    
+
     // Update debug UI
     this.debugUI.update();
   }
@@ -378,11 +389,17 @@ export class MainScene extends Phaser.Scene {
       // For now, log interaction attempt
       console.log(`Attempting to interact at grid position ${gridX},${gridY}`);
     }
-    
+
     if (this.inputManager.wasActionJustPressed(InputAction.TOGGLE_INVENTORY)) {
       // For now, log inventory toggle
       console.log('Toggling inventory');
     }
+  }
+
+  // Update the resources display with current player resources
+  private _updateResourcesDisplay(): void {
+    const resources = getPlayerResources(this.world);
+    this.resourcesText.setText(`Resources: Iron Ore: ${resources.ironOre}`);
   }
   
   private _updateTerrainInfo(gridX: number, gridY: number): void {

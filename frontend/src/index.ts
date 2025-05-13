@@ -3,6 +3,7 @@ import { TerrainExperiments } from './game/terrain/TerrainExperiments';
 import { PerlinNoise } from './utils/PerlinNoise';
 import { TerrainType } from './game/terrain/TerrainTypes';
 import { MainScene } from './game/scenes/MainScene';
+import { initDevTools } from './utils/DevTools';
 
 // Game configuration
 const config: Phaser.Types.Core.GameConfig = {
@@ -40,6 +41,10 @@ function resizeToFit() {
   }
 }
 
-
-// Make terrain generation available globally for debugging
+// Make game available globally for debugging
 (window as any).game = game;
+
+// Initialize development tools (throwaway functions for testing)
+initDevTools();
+
+console.log('Game initialized.');
