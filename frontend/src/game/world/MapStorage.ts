@@ -1,11 +1,20 @@
 import { TerrainType } from '../terrain/TerrainTypes';
 import { GRID } from '../GameConstants';
+import { BuildingType } from '../ecs/components/components';
+
+// Building data for serialization
+export interface BuildingData {
+  type: number; // BuildingType enum value
+  gridX: number;
+  gridY: number;
+}
 
 // Data shape for maps in the game
 export interface MapData {
   width: number;
   height: number;
   terrainGrid: TerrainType[][];
+  buildings: BuildingData[];
   seed: number;
   generationParameters: {
     noiseScale: number;
@@ -77,6 +86,7 @@ export class MapStorage {
       width: GRID.MAP_WIDTH,
       height: GRID.MAP_HEIGHT,
       terrainGrid,
+      buildings: [],
       seed: Math.random() * 1000,
       generationParameters: {
         noiseScale: 0.1,
