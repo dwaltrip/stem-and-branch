@@ -6,6 +6,11 @@ export enum TerrainType {
   MOUNTAIN = 4,
 }
 
+// Tile indices for buildings in the spritesheet
+export enum BuildingTileIndex {
+  MINING_DRILL = 5, // Row 2, Col 2 (0-indexed)
+}
+
 export interface TerrainThresholds {
   WATER: number;
   SAND: number;

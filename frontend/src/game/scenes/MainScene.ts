@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { terrainExperiments } from '../terrain/TerrainExperiments';
 import { PerlinNoise } from '../../utils/PerlinNoise';
-import { TerrainParams, TerrainType, TERRAIN_COLORS } from '../terrain/TerrainTypes';
+import { TerrainParams, TerrainType, TERRAIN_COLORS, BuildingTileIndex } from '../terrain/TerrainTypes';
 import { GRID, PLAYER } from '../GameConstants';
 import { InputManager, InputAction } from '../input/InputManager';
 import { DebugUI } from '../ui/DebugUI';
@@ -61,7 +61,14 @@ export class MainScene extends Phaser.Scene {
   }
 
   preload(): void {
-    this.load.image('terrain_tiles', 'assets/sprites/terrain_tileset.png');
+    // Load terrain tileset as a spritesheet with proper frame size
+    this.load.spritesheet('terrain_tiles', 
+      'assets/sprites/terrain_tileset.png',
+      { 
+        frameWidth: GRID.SIZE, 
+        frameHeight: GRID.SIZE 
+      }
+    );
     
     // Create a simple player rectangle
     const playerSize = Math.floor(GRID.SIZE / 3);
@@ -546,11 +553,10 @@ export class MainScene extends Phaser.Scene {
         let frame: number;
         switch (buildingType) {
           case BuildingType.MINING_DRILL:
-            // Assuming mining drill is at frame 5 in the tileset
-            frame = 5;
+            frame = BuildingTileIndex.MINING_DRILL;
             break;
           default:
-            frame = 5; // Default frame
+            frame = BuildingTileIndex.MINING_DRILL; // Default frame
         }
         
         sprite = this.add.sprite(pixelX, pixelY, 'terrain_tiles', frame);
