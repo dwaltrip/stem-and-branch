@@ -6,11 +6,28 @@ import { GRID, PLAYER } from '../GameConstants';
 import { InputManager, InputAction } from '../input/InputManager';
 import { DebugUI } from '../ui/DebugUI';
 import { MapStorage, MapData } from '../world/MapStorage';
+import { setMainSceneInstance } from '../../utils/DevTools';
 
 import { world as ecsWorld, createPlayerEntity } from '../ecs/world';
 import { movementSystem, playerInputSystem } from '../ecs/systems/movementSystem';
 import { getPlayerResources, modifyPlayerResources } from '../ecs/systems/resourceSystem';
-import { Position, PlayerControlled, Resources } from '../ecs/components/components';
+import { removeEntity } from 'bitecs';
+import { 
+  Position, 
+  PlayerControlled, 
+  Resources, 
+  Building, 
+  BuildingType, 
+  BUILDING_DEFINITIONS 
+} from '../ecs/components/components';
+import { 
+  buildingProductionSystem, 
+  addBuilding, 
+  removeBuilding, 
+  getBuildingAt,
+  productionBuildingQuery
+} from '../ecs/systems/buildingSystem';
+import { BuildingData } from '../world/MapStorage';
 
 export class MainScene extends Phaser.Scene {
 
@@ -35,6 +52,9 @@ export class MainScene extends Phaser.Scene {
   private map!: Phaser.Tilemaps.Tilemap;
   private tileset!: Phaser.Tilemaps.Tileset;
   private terrainLayer!: Phaser.Tilemaps.TilemapLayer;
+  
+  // Building objects
+  private buildingSprites: Map<number, Phaser.GameObjects.Sprite> = new Map();
 
   constructor() {
     super({ key: 'MainScene' });
@@ -52,6 +72,9 @@ export class MainScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Set this instance for DevTools to access
+    setMainSceneInstance(this);
+    
     const savedMap = MapStorage.loadMap();
     
     const defaultParams: TerrainParams = {
@@ -213,6 +236,9 @@ export class MainScene extends Phaser.Scene {
     this.currentMapData.terrainGrid = this.mapData;
     this.currentMapData.generationParameters = terrainExperiments.getParams();
     
+    // Save buildings
+    this.currentMapData.buildings = this._serializeBuildings();
+    
     const success = MapStorage.saveMap(this.currentMapData);
     const message = success ? 'Map saved successfully!' : 'Failed to save map!';
     // Show result to user
@@ -234,7 +260,42 @@ export class MainScene extends Phaser.Scene {
     this.currentMapData = loadedMap;
     this.mapData = loadedMap.terrainGrid;
     this.renderTerrainTiles();
+    
+    // Load buildings
+    this._deserializeBuildings(loadedMap.buildings || []);
+    
     this.showTemporaryMessage('Map loaded successfully!');
+  }
+  
+  /**
+   * Serializes all buildings in the ECS world to BuildingData objects
+   * @returns Array of BuildingData objects
+   */
+  private _serializeBuildings(): BuildingData[] {
+    const buildings = productionBuildingQuery(this.world);
+    
+    return buildings.map(entity => ({
+      type: Building.type[entity],
+      gridX: Building.gridX[entity],
+      gridY: Building.gridY[entity]
+    }));
+  }
+  
+  /**
+   * Creates building entities from BuildingData objects
+   * @param buildings Array of BuildingData objects
+   */
+  private _deserializeBuildings(buildings: BuildingData[]): void {
+    // Remove all existing buildings first
+    const existingBuildings = productionBuildingQuery(this.world);
+    for (let i = 0; i < existingBuildings.length; i++) {
+      removeEntity(this.world, existingBuildings[i]);
+    }
+    
+    // Create new buildings from data
+    buildings.forEach(building => {
+      addBuilding(this.world, building.type, building.gridX, building.gridY);
+    });
   }
   
   private generateNewMap(): void {
@@ -358,6 +419,7 @@ export class MainScene extends Phaser.Scene {
     // Run ECS systems
     playerInputSystem(this.world, this.inputManager);
     movementSystem(this.world, deltaTime, terrainProvider);
+    buildingProductionSystem(this.world, deltaTime, terrainProvider);
     
     // Get current player position from ECS
     const playerX = Position.x[this.playerEntity];
@@ -376,6 +438,9 @@ export class MainScene extends Phaser.Scene {
     this._updateTerrainInfo(gridX, gridY);
     this._updateResourcesDisplay();
     this._handleAdditionalInput(gridX, gridY);
+    
+    // Update building sprites
+    this._updateBuildingSprites();
 
     // Update debug UI
     this.debugUI.update();
@@ -444,5 +509,111 @@ export class MainScene extends Phaser.Scene {
     
     const terrainType = this.mapData[gridY][gridX];
     return terrainType !== TerrainType.WATER && terrainType !== TerrainType.MOUNTAIN;
+  }
+  
+  /**
+   * Updates all building sprite positions and visibility based on ECS state
+   */
+  private _updateBuildingSprites(): void {
+    // Get all buildings from ECS
+    const buildings = productionBuildingQuery(this.world);
+    const entitySet = new Set(buildings);
+    
+    // Remove sprites for entities that no longer exist
+    for (const [entity, sprite] of this.buildingSprites.entries()) {
+      if (!entitySet.has(entity)) {
+        sprite.destroy();
+        this.buildingSprites.delete(entity);
+      }
+    }
+    
+    // Update or create sprites for all buildings
+    for (let i = 0; i < buildings.length; i++) {
+      const entity = buildings[i];
+      const gridX = Building.gridX[entity];
+      const gridY = Building.gridY[entity];
+      const buildingType = Building.type[entity];
+      
+      // Position in pixels
+      const pixelX = gridX * GRID.SIZE + GRID.SIZE / 2;
+      const pixelY = gridY * GRID.SIZE + GRID.SIZE / 2;
+      
+      let sprite = this.buildingSprites.get(entity);
+      
+      // Create sprite if it doesn't exist
+      if (!sprite) {
+        // Use tileset frame based on building type
+        let frame: number;
+        switch (buildingType) {
+          case BuildingType.MINING_DRILL:
+            // Assuming mining drill is at frame 5 in the tileset
+            frame = 5;
+            break;
+          default:
+            frame = 5; // Default frame
+        }
+        
+        sprite = this.add.sprite(pixelX, pixelY, 'terrain_tiles', frame);
+        sprite.setOrigin(0.5, 0.5);
+        sprite.setDepth(1); // Above terrain, below UI
+        this.buildingSprites.set(entity, sprite);
+      } else {
+        // Update sprite position if needed
+        sprite.x = pixelX;
+        sprite.y = pixelY;
+      }
+    }
+  }
+  
+  /**
+   * Places a building at the specified grid coordinates
+   * @param gridX Grid X position
+   * @param gridY Grid Y position
+   * @param type Type of building to place
+   * @returns True if building was placed successfully, false otherwise
+   */
+  public placeBuilding(gridX: number, gridY: number, type: BuildingType): boolean {
+    // Check if position is valid for building
+    if (!this.isValidBuildPosition(gridX, gridY)) {
+      return false;
+    }
+    
+    // Add building to ECS world
+    const entityId = addBuilding(this.world, type, gridX, gridY);
+    return entityId !== -1;
+  }
+  
+  /**
+   * Removes a building at the specified grid coordinates
+   * @param gridX Grid X position
+   * @param gridY Grid Y position
+   * @returns True if a building was removed, false otherwise
+   */
+  public removeBuilding(gridX: number, gridY: number): boolean {
+    return removeBuilding(this.world, gridX, gridY);
+  }
+  
+  /**
+   * Checks if a position is valid for building placement
+   * @param gridX Grid X position
+   * @param gridY Grid Y position
+   * @returns True if position is valid for building, false otherwise
+   */
+  private isValidBuildPosition(gridX: number, gridY: number): boolean {
+    // Check if position is passable
+    if (!this.isValidPosition(gridX, gridY)) {
+      return false;
+    }
+    
+    // Check if there's already a building here
+    if (getBuildingAt(this.world, gridX, gridY) !== -1) {
+      return false;
+    }
+    
+    // For mining drills, check if they're on correct resource
+    const terrainType = this._getTerrainTypeAt(gridX, gridY);
+    
+    // Mining drills should only be placed on iron ore
+    return terrainType === TerrainType.IRON_ORE;
   }
 }
