@@ -4,13 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Description
 
-We are building a web-based factory and automation game. It will be 2d and have a top-down camera with simple visuals.
+We are building a web-based factory and automation game.  It will be heavily inspired by factorio. Players can create powerful, highly scalable factories and progressively unlock more powerful technologies.
 
-We are trying out Phaser.js to see if it can do the heavy lifting for the game.
+- It will be 2d and have a top-down camera with simple visuals.
+- Grid-based map with each player having a little avatar they can move around to explore and build things. Structures and entities will be positioned on the grid, mostly with integer coords.
 
-The game will be grid based with each player having a little avatar they can move around to build and explore the map.
-
-The game will be heavily inspired by factorio. Players can create powerful, highly scalable factories.
+Tech:
+- The frontend is in Typescript.
+- Using ECS (bitECS in partciular) as a core architecture for state management.
+- Trying out Phaser.js as our game engine / framework
 
 ## Build and Development Commands
 - `npm run start` - Start webpack dev server (port 8080)
@@ -23,8 +25,9 @@ The game will be heavily inspired by factorio. Players can create powerful, high
 - Be very judicious about introducing new abstractions / patterns, as poor or too many abstractions can severly hamstring a codebase.
 
 - TypeScript with strict mode enabled
-- Dont excessively comment
-    - No comments that basically just repeat what the line of code says!
+- Don't excessively comment
+    - DO NOT use verbose, repetitive JSDoc style comments
+    - NO comments that just repeat what the line of code obviously is doing!
     - Only provide comments for non-obvious or particularly tricky pieces
     - Generally, focus WHY the choice was made, not on WHAT the code does
 
@@ -37,4 +40,6 @@ The game will be heavily inspired by factorio. Players can create powerful, high
 - In general, lean towards asking for clarificaiton / guidance / confirmation more often than not
 - When making non-trivial changes, sketch out a skeleton of what the implementation will look like and confirm with me before writing any code
 - Check that you are sticking to the plan as you make edits. If the plan needs to be updated, lets quickly discuss before proceeding (e.g. check with me)
-- When planning larger pieces of work, break the work into smaller chunks that we can check out and make sure are good and sensible, to catch problems earlier
+- Whenever possible, use tools to do work instead of processing large amounts of tokens yourself. This will save us a lot of money on inference cost.
+    - Example: If the user asks "I want to know how many lines of javascript are in this codebase", use basic terminal commands to programmatically get the answer without extra inferrence, instead of reading all of the code files yourself.
+
