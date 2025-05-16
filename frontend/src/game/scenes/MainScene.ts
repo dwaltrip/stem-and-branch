@@ -11,7 +11,7 @@ import { world as ecsWorld, createPlayerEntity } from '../ecs/world';
 import { movementSystem, playerInputSystem } from '../ecs/systems/movementSystem';
 import { getPlayerResources } from '../ecs/systems/resourceSystem';
 import { removeEntity } from 'bitecs';
-import { Position, BuildingType } from '../ecs/components/components';
+import { Position, BuildingType, Building } from '../ecs/components/components';
 import { 
   addBuilding, 
   removeBuilding, 
@@ -187,8 +187,8 @@ export class MainScene extends Phaser.Scene {
    */
   private _serializeBuildings(): BuildingData[] {
     const buildings = productionBuildingQuery(this.world);
-    const Building = this.world.components.Building;
     
+    // Use the imported Building component directly
     return buildings.map(entity => ({
       type: Building.type[entity],
       gridX: Building.gridX[entity],

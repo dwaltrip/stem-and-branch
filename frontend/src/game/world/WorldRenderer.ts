@@ -3,7 +3,7 @@ import { TerrainParams, TerrainType, BuildingTileIndex } from '../terrain/Terrai
 import { GRID } from '../GameConstants';
 import { terrainExperiments as terrainExperimentsModule } from '../terrain/TerrainExperiments';
 import { PerlinNoise } from '../../utils/PerlinNoise';
-import { BuildingType } from '../ecs/components/components';
+import { BuildingType, Building } from '../ecs/components/components';
 import { productionBuildingQuery } from '../ecs/systems/buildingSystem';
 
 /**
@@ -235,7 +235,6 @@ export class WorldRenderer {
     // Update or create sprites for all buildings
     for (let i = 0; i < buildings.length; i++) {
       const entity = buildings[i];
-      const Building = world.components.Building;
       
       const gridX = Building.gridX[entity];
       const gridY = Building.gridY[entity];
