@@ -1,61 +1,41 @@
 import Phaser from 'phaser';
-import { terrainExperiments } from '../terrain/TerrainExperiments';
-import { PerlinNoise } from '../../utils/PerlinNoise';
-import { TerrainParams, TerrainType, TERRAIN_COLORS, BuildingTileIndex } from '../terrain/TerrainTypes';
-import { GRID, PLAYER } from '../GameConstants';
+import { GRID } from '../GameConstants';
 import { InputManager, InputAction } from '../input/InputManager';
-import { DebugUI } from '../ui/DebugUI';
-import { MapStorage, MapData } from '../world/MapStorage';
+import { MapStorage, MapData, BuildingData } from '../world/MapStorage';
 import { setMainSceneInstance } from '../../utils/DevTools';
+import { TerrainType } from '../terrain/TerrainTypes';
+import { WorldRenderer } from '../world/WorldRenderer';
+import { GameUI } from '../ui/GameUI';
 
 import { world as ecsWorld, createPlayerEntity } from '../ecs/world';
 import { movementSystem, playerInputSystem } from '../ecs/systems/movementSystem';
-import { getPlayerResources, modifyPlayerResources } from '../ecs/systems/resourceSystem';
+import { getPlayerResources } from '../ecs/systems/resourceSystem';
 import { removeEntity } from 'bitecs';
+import { Position, BuildingType } from '../ecs/components/components';
 import { 
-  Position, 
-  PlayerControlled, 
-  Resources, 
-  Building, 
-  BuildingType, 
-  BUILDING_DEFINITIONS 
-} from '../ecs/components/components';
-import { 
-  buildingProductionSystem, 
   addBuilding, 
   removeBuilding, 
   getBuildingAt,
-  productionBuildingQuery
+  productionBuildingQuery,
+  buildingProductionSystem
 } from '../ecs/systems/buildingSystem';
-import { BuildingData } from '../world/MapStorage';
 
 export class MainScene extends Phaser.Scene {
-
   // Game objects
   private player!: Phaser.Physics.Arcade.Sprite;
-  private positionText!: Phaser.GameObjects.Text;
-  private terrainText!: Phaser.GameObjects.Text;
-  private resourcesText!: Phaser.GameObjects.Text;
+  
+  // Core systems
   private inputManager!: InputManager;
-  private debugUI!: DebugUI;
-  private saveLoadText!: Phaser.GameObjects.Text;
+  private worldRenderer!: WorldRenderer;
+  private gameUI!: GameUI;
   
   // ECS properties
   private world = ecsWorld;
   private playerEntity: number = -1;
 
   // Map data
-  private mapData: TerrainType[][] = [];
   private currentMapData: MapData | null = null;
   
-  // TileMap objects
-  private map!: Phaser.Tilemaps.Tilemap;
-  private tileset!: Phaser.Tilemaps.Tileset;
-  private terrainLayer!: Phaser.Tilemaps.TilemapLayer;
-  
-  // Building objects
-  private buildingSprites: Map<number, Phaser.GameObjects.Sprite> = new Map();
-
   constructor() {
     super({ key: 'MainScene' });
   }
@@ -82,82 +62,16 @@ export class MainScene extends Phaser.Scene {
     // Set this instance for DevTools to access
     setMainSceneInstance(this);
     
-    const savedMap = MapStorage.loadMap();
+    // Initialize subsystems
+    this.worldRenderer = new WorldRenderer(this);
+    this.worldRenderer.initialize();
     
-    const defaultParams: TerrainParams = {
-      noiseScale: 0.1,
-      noiseOctaves: 4,
-      noisePersistence: 0.5,
-      noiseSeed: Math.random() * 1000,
-      terrainThresholds: {
-        WATER: 0.3,
-        SAND: 0.4,
-        GRASS: 0.8,
-        MOUNTAIN: 1.0
-      }
-    };
+    this.inputManager = new InputManager(this);
+    this.gameUI = new GameUI(this, this.inputManager);
     
-    // Use saved parameters if available
-    const terrainParams = savedMap ? {
-      ...savedMap.generationParameters,
-      noiseSeed: savedMap.seed
-    } : defaultParams;
-    this.currentMapData = savedMap || MapStorage.createEmptyMap();
+    // Load or generate map
+    this.initializeWorld();
     
-    // Initialize terrain experiments
-    terrainExperiments.init(
-      this,
-      terrainParams,
-      this.generateTerrain.bind(this),
-      this.renderTerrainTiles.bind(this)
-    );
-    
-    this.map = this.make.tilemap({
-      tileWidth: GRID.SIZE,
-      tileHeight: GRID.SIZE,
-      width: GRID.MAP_WIDTH,
-      height: GRID.MAP_HEIGHT
-    });
-    
-    const tileset = this.map.addTilesetImage('terrain_tiles', undefined, GRID.SIZE, GRID.SIZE, 0, 0, 0);
-    if (!tileset) {
-      console.error('Failed to load tileset');
-      return;
-    }
-    this.tileset = tileset;
-    
-    // Create a blank layer for the terrain
-    const layer = this.map.createBlankLayer('terrain', this.tileset, 0, 0, GRID.MAP_WIDTH, GRID.MAP_HEIGHT);
-    if (!layer) {
-      console.error('Failed to create tilemap layer');
-      return;
-    }
-    this.terrainLayer = layer;
-    
-    if (savedMap) {
-      this.mapData = savedMap.terrainGrid;
-      console.log('Loaded saved map');
-    } else {
-      this.generateTerrain(terrainParams);
-      console.log('Generated new map');
-    }
-    
-    this.renderTerrainTiles();
-    
-    // Create a grid overlay for debugging (semi-transparent)
-    this.add.grid(
-      0, 
-      0,
-      GRID.MAP_WIDTH * GRID.SIZE, 
-      GRID.MAP_HEIGHT * GRID.SIZE,
-      GRID.SIZE, 
-      GRID.SIZE,
-      0x000000, 
-      0, 
-      0x000000, 
-      0.1
-    ).setOrigin(0, 0);
-
     // Create player
     this.player = this.physics.add.sprite(
       GRID.MAP_WIDTH * GRID.SIZE / 2, 
@@ -178,61 +92,54 @@ export class MainScene extends Phaser.Scene {
     this.playerEntity = createPlayerEntity(this.player.x, this.player.y);
     console.log('Created player entity with ID:', this.playerEntity);
     
-    this.inputManager = new InputManager(this);
-    
-    // Display player position in UI
-    this.positionText = this.add.text(10, 10, 'Position: 0,0', { 
-      fontSize: '16px', 
-      color: '#fff',
-      backgroundColor: '#000'
-    });
-    this.positionText.setScrollFactor(0); // Fix to camera
-    
-    // Display terrain info for currrent tile (grass is placeholder)
-    this.terrainText = this.add.text(10, 40, 'Terrain: Grass', {
-      fontSize: '16px',
-      color: '#fff',
-      backgroundColor: '#000'
-    });
-    this.terrainText.setScrollFactor(0); // Fix to camera
-
-    // Display player resources
-    this.resourcesText = this.add.text(10, 130, 'Resources: Iron Ore: 0', {
-      fontSize: '16px',
-      color: '#fff',
-      backgroundColor: '#000'
-    });
-    this.resourcesText.setScrollFactor(0); // Fix to camera
-
-    // Initialize debug UI
-    this.debugUI = new DebugUI(this, this.inputManager);
-    
-    // Add save/load UI text
-    this.saveLoadText = this.add.text(10, this.game.canvas.height - 100, 
-      'Press Z to save map\nPress X to load map\nPress N for new map', { 
-      fontSize: '14px', 
-      color: '#fff',
-      backgroundColor: '#000'
-    });
-    this.saveLoadText.setScrollFactor(0);
-    
-    if (this.input.keyboard) {
-      this.input.keyboard.on('keydown-Z', () => {
-        this.saveCurrentMap();
-      });
-      
-      this.input.keyboard.on('keydown-X', () => {
-        this.loadSavedMap();
-      });
-      
-      this.input.keyboard.on('keydown-N', () => {
-        this.generateNewMap();
-      });
-    } else {
-      console.error('Keyboard input not available');
-    }
+    // Set up save/load handlers
+    this.gameUI.setupSaveLoadHandlers(
+      this.saveCurrentMap.bind(this),
+      this.loadSavedMap.bind(this),
+      this.generateNewMap.bind(this)
+    );
   }
   
+  private initializeWorld(): void {
+    const savedMap = MapStorage.loadMap();
+    
+    const defaultParams = {
+      noiseScale: 0.1,
+      noiseOctaves: 4,
+      noisePersistence: 0.5,
+      noiseSeed: Math.random() * 1000,
+      terrainThresholds: {
+        WATER: 0.3,
+        SAND: 0.4,
+        GRASS: 0.8,
+        MOUNTAIN: 1.0
+      }
+    };
+    
+    // Use saved parameters if available
+    const terrainParams = savedMap ? {
+      ...savedMap.generationParameters,
+      noiseSeed: savedMap.seed
+    } : defaultParams;
+    
+    this.currentMapData = savedMap || MapStorage.createEmptyMap();
+    
+    // Initialize terrain with parameters
+    this.worldRenderer.initTerrainExperiments(terrainParams);
+    
+    if (savedMap) {
+      this.worldRenderer.loadMapData(savedMap.terrainGrid);
+      console.log('Loaded saved map');
+      
+      // Load buildings
+      this._deserializeBuildings(savedMap.buildings || []);
+    } else {
+      this.worldRenderer.generateTerrain(terrainParams);
+      this.worldRenderer.renderTerrainTiles();
+      console.log('Generated new map');
+    }
+  }
+
   // Save the current map to localStorage
   private saveCurrentMap(): void {
     if (!this.currentMapData) {
@@ -240,46 +147,47 @@ export class MainScene extends Phaser.Scene {
     }
     
     // Update map data with current terrain
-    this.currentMapData.terrainGrid = this.mapData;
-    this.currentMapData.generationParameters = terrainExperiments.getParams();
+    this.currentMapData.terrainGrid = this.worldRenderer.getMapData();
+    this.currentMapData.generationParameters = this.worldRenderer.terrainExperiments.getParams();
     
     // Save buildings
     this.currentMapData.buildings = this._serializeBuildings();
     
     const success = MapStorage.saveMap(this.currentMapData);
     const message = success ? 'Map saved successfully!' : 'Failed to save map!';
+    
     // Show result to user
-    this.showTemporaryMessage(message);
+    this.gameUI.showTemporaryMessage(message);
   }
   
   // Load saved map from localStorage
   private loadSavedMap(): void {
     if (!MapStorage.hasSavedMap()) {
-      this.showTemporaryMessage('No saved map found!');
+      this.gameUI.showTemporaryMessage('No saved map found!');
       return;
     }
+    
     const loadedMap = MapStorage.loadMap();
     if (!loadedMap) {
-      this.showTemporaryMessage('Failed to load saved map!');
+      this.gameUI.showTemporaryMessage('Failed to load saved map!');
       return;
     }
     
     this.currentMapData = loadedMap;
-    this.mapData = loadedMap.terrainGrid;
-    this.renderTerrainTiles();
+    this.worldRenderer.loadMapData(loadedMap.terrainGrid);
     
     // Load buildings
     this._deserializeBuildings(loadedMap.buildings || []);
     
-    this.showTemporaryMessage('Map loaded successfully!');
+    this.gameUI.showTemporaryMessage('Map loaded successfully!');
   }
   
   /**
    * Serializes all buildings in the ECS world to BuildingData objects
-   * @returns Array of BuildingData objects
    */
   private _serializeBuildings(): BuildingData[] {
     const buildings = productionBuildingQuery(this.world);
+    const Building = this.world.components.Building;
     
     return buildings.map(entity => ({
       type: Building.type[entity],
@@ -290,7 +198,6 @@ export class MainScene extends Phaser.Scene {
   
   /**
    * Creates building entities from BuildingData objects
-   * @param buildings Array of BuildingData objects
    */
   private _deserializeBuildings(buildings: BuildingData[]): void {
     // Remove all existing buildings first
@@ -306,111 +213,13 @@ export class MainScene extends Phaser.Scene {
   }
   
   private generateNewMap(): void {
+    const terrainExperiments = this.worldRenderer.terrainExperiments;
     const params = terrainExperiments.getParams();
     params.noiseSeed = Math.random() * 1000;
     
-    this.generateTerrain(params);
-    this.renderTerrainTiles();
-    this.showTemporaryMessage('Generated new map!');
-  }
-  
-  private showTemporaryMessage(message: string): void {
-    const messageText = this.add.text(this.cameras.main.centerX, 100, message, {
-      fontSize: '18px',
-      backgroundColor: '#000',
-      color: '#fff',
-      padding: { x: 10, y: 5 }
-    });
-    messageText.setOrigin(0.5);
-    messageText.setScrollFactor(0); // Fix to camera
-    messageText.setDepth(100); // Ensure it's on top
-    
-    // Fade out and destroy after delay
-    this.tweens.add({
-      targets: messageText,
-      alpha: 0,
-      duration: 2000,
-      ease: 'Power2',
-      onComplete: () => {
-        messageText.destroy();
-      }
-    });
-  }
-
-  // Generate terrain using Perlin noise
-  generateTerrain(params: TerrainParams): void {
-    // Get parameters from passed object or use defaults
-    const {
-      noiseSeed = Math.random() * 1000,
-      noiseScale = 0.1, // Scale for noise (ranges from 0 to 1)
-      noiseOctaves = 4,
-      noisePersistence = 0.5,
-      terrainThresholds = {
-        WATER: 0.3,
-        SAND: 0.4,
-        GRASS: 0.8,
-        MOUNTAIN: 1.0
-      }
-    } = params || {};
-    
-    const perlin = new PerlinNoise(noiseSeed);
-    const mapData = Array(GRID.MAP_HEIGHT).fill(0).map(() => Array(GRID.MAP_WIDTH).fill(TerrainType.GRASS));
-    
-    for (let y = 0; y < GRID.MAP_HEIGHT; y++) {
-      for (let x = 0; x < GRID.MAP_WIDTH; x++) {
-        const nx = x * noiseScale;
-        const ny = y * noiseScale;
-        const noiseValue = perlin.normalized(nx, ny, noiseOctaves, noisePersistence);
-        
-        let terrainType: TerrainType;
-        if (noiseValue < terrainThresholds.WATER) {
-          terrainType = TerrainType.WATER;
-        } else if (noiseValue < terrainThresholds.SAND) {
-          terrainType = TerrainType.SAND;
-        } else if (noiseValue < terrainThresholds.GRASS) {
-          if (Math.random() < 0.05) {
-            terrainType = TerrainType.IRON_ORE;
-          }
-          else {
-            terrainType = TerrainType.GRASS;
-          }
-        } else {
-          terrainType = TerrainType.MOUNTAIN;
-        }
-        
-        mapData[y][x] = terrainType;
-      }
-    }
-
-    this.mapData = mapData;
-  }
-
-  renderTerrainTiles(): void {
-    if (!this.terrainLayer || !this.tileset) {
-      console.error('Tilemap components not initialized');
-      return;
-    }
-    
-    // Map TerrainType to tilemap indices
-    const typeToTileIndex = {
-      [TerrainType.WATER]: 0,
-      [TerrainType.SAND]: 1,
-      [TerrainType.IRON_ORE]: 2,
-      [TerrainType.GRASS]: 3,
-      [TerrainType.MOUNTAIN]: 4,
-      [5]: 5,
-    };
-    
-    for (let y = 0; y < GRID.MAP_HEIGHT; y++) {
-      for (let x = 0; x < GRID.MAP_WIDTH; x++) {
-        const terrainType = this.mapData[y][x];
-        const tileIndex = typeToTileIndex[terrainType];
-        this.terrainLayer.putTileAt(tileIndex, x, y);
-      }
-    }
-    
-    // Set depth to ensure it renders behind other objects
-    this.terrainLayer.setDepth(-1);
+    this.worldRenderer.generateTerrain(params);
+    this.worldRenderer.renderTerrainTiles();
+    this.gameUI.showTemporaryMessage('Generated new map!');
   }
 
   update(): void {
@@ -419,8 +228,8 @@ export class MainScene extends Phaser.Scene {
     
     // Create terrain provider for the movement system
     const terrainProvider = {
-      getTerrainAt: this._getTerrainTypeAt.bind(this),
-      isValidPosition: this.isValidPosition.bind(this)
+      getTerrainAt: this.worldRenderer.getTerrainTypeAt.bind(this.worldRenderer),
+      isValidPosition: this.worldRenderer.isValidPosition.bind(this.worldRenderer)
     };
     
     // Run ECS systems
@@ -441,16 +250,16 @@ export class MainScene extends Phaser.Scene {
     const gridY = Math.floor(playerY / GRID.SIZE);
     
     // Update UI
-    this.positionText.setText(`Position: ${gridX},${gridY}`);
-    this._updateTerrainInfo(gridX, gridY);
-    this._updateResourcesDisplay();
+    this.gameUI.updatePositionDisplay(gridX, gridY);
+    this.gameUI.updateTerrainInfo(this.worldRenderer.getTerrainTypeAt(gridX, gridY));
+    this.gameUI.updateResourcesDisplay(getPlayerResources(this.world));
     this._handleAdditionalInput(gridX, gridY);
     
     // Update building sprites
-    this._updateBuildingSprites();
-
+    this.worldRenderer.updateBuildingSprites(this.world);
+    
     // Update debug UI
-    this.debugUI.update();
+    this.gameUI.updateDebugUI();
   }
   
   /**
@@ -467,120 +276,13 @@ export class MainScene extends Phaser.Scene {
       console.log('Toggling inventory');
     }
   }
-
-  // Update the resources display with current player resources
-  private _updateResourcesDisplay(): void {
-    const resources = getPlayerResources(this.world);
-    this.resourcesText.setText(`Resources: Iron Ore: ${resources.ironOre}`);
-  }
-  
-  private _updateTerrainInfo(gridX: number, gridY: number): void {
-    let terrainType = this._getTerrainTypeAt(gridX, gridY);
-    let terrainName = "Unknown";
-    
-    switch (terrainType) {
-      case TerrainType.WATER:
-        terrainName = "Water";
-        break;
-      case TerrainType.SAND:
-        terrainName = "Sand";
-        break;
-      case TerrainType.GRASS:
-        terrainName = "Grass";
-        break;
-      case TerrainType.MOUNTAIN:
-        terrainName = "Mountain";
-        break;
-      case TerrainType.IRON_ORE:
-        terrainName = "Iron Ore";
-        break;
-    }
-
-    this.terrainText.setText(`Terrain: ${terrainName}`);
-  }
-  
-  private _getTerrainTypeAt(gridX: number, gridY: number): TerrainType {
-    // Check if position is within map bounds
-    if (gridX >= 0 && gridX < GRID.MAP_WIDTH && gridY >= 0 && gridY < GRID.MAP_HEIGHT) {
-      return this.mapData[gridY][gridX];
-    }
-    return TerrainType.GRASS; // Default
-  }
-  
-  // Check if grid pos is within bounds and not impassable (water/mountain)
-  private isValidPosition(gridX: number, gridY: number): boolean {
-    // Check bounds
-    if (gridX < 0 || gridX >= GRID.MAP_WIDTH || gridY < 0 || gridY >= GRID.MAP_HEIGHT) {
-      return false;
-    }
-    
-    const terrainType = this.mapData[gridY][gridX];
-    return terrainType !== TerrainType.WATER && terrainType !== TerrainType.MOUNTAIN;
-  }
-  
-  /**
-   * Updates all building sprite positions and visibility based on ECS state
-   */
-  private _updateBuildingSprites(): void {
-    // Get all buildings from ECS
-    const buildings = productionBuildingQuery(this.world);
-    const entitySet = new Set(buildings);
-    
-    // Remove sprites for entities that no longer exist
-    for (const [entity, sprite] of this.buildingSprites.entries()) {
-      if (!entitySet.has(entity)) {
-        sprite.destroy();
-        this.buildingSprites.delete(entity);
-      }
-    }
-    
-    // Update or create sprites for all buildings
-    for (let i = 0; i < buildings.length; i++) {
-      const entity = buildings[i];
-      const gridX = Building.gridX[entity];
-      const gridY = Building.gridY[entity];
-      const buildingType = Building.type[entity];
-      
-      // Position in pixels
-      const pixelX = gridX * GRID.SIZE + GRID.SIZE / 2;
-      const pixelY = gridY * GRID.SIZE + GRID.SIZE / 2;
-      
-      let sprite = this.buildingSprites.get(entity);
-      
-      // Create sprite if it doesn't exist
-      if (!sprite) {
-        // Use tileset frame based on building type
-        let frame: number;
-        switch (buildingType) {
-          case BuildingType.MINING_DRILL:
-            frame = BuildingTileIndex.MINING_DRILL;
-            break;
-          default:
-            frame = BuildingTileIndex.MINING_DRILL; // Default frame
-        }
-        
-        sprite = this.add.sprite(pixelX, pixelY, 'terrain_tiles', frame);
-        sprite.setOrigin(0.5, 0.5);
-        sprite.setDepth(1); // Above terrain, below UI
-        this.buildingSprites.set(entity, sprite);
-      } else {
-        // Update sprite position if needed
-        sprite.x = pixelX;
-        sprite.y = pixelY;
-      }
-    }
-  }
   
   /**
    * Places a building at the specified grid coordinates
-   * @param gridX Grid X position
-   * @param gridY Grid Y position
-   * @param type Type of building to place
-   * @returns True if building was placed successfully, false otherwise
    */
   public placeBuilding(gridX: number, gridY: number, type: BuildingType): boolean {
     // Check if position is valid for building
-    if (!this.isValidBuildPosition(gridX, gridY)) {
+    if (!this.worldRenderer.isValidBuildPosition(this.world, gridX, gridY, type)) {
       return false;
     }
     
@@ -591,35 +293,8 @@ export class MainScene extends Phaser.Scene {
   
   /**
    * Removes a building at the specified grid coordinates
-   * @param gridX Grid X position
-   * @param gridY Grid Y position
-   * @returns True if a building was removed, false otherwise
    */
   public removeBuilding(gridX: number, gridY: number): boolean {
     return removeBuilding(this.world, gridX, gridY);
-  }
-  
-  /**
-   * Checks if a position is valid for building placement
-   * @param gridX Grid X position
-   * @param gridY Grid Y position
-   * @returns True if position is valid for building, false otherwise
-   */
-  private isValidBuildPosition(gridX: number, gridY: number): boolean {
-    // Check if position is passable
-    if (!this.isValidPosition(gridX, gridY)) {
-      return false;
-    }
-    
-    // Check if there's already a building here
-    if (getBuildingAt(this.world, gridX, gridY) !== -1) {
-      return false;
-    }
-    
-    // For mining drills, check if they're on correct resource
-    const terrainType = this._getTerrainTypeAt(gridX, gridY);
-    
-    // Mining drills should only be placed on iron ore
-    return terrainType === TerrainType.IRON_ORE;
   }
 }
