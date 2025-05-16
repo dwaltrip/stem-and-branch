@@ -6,10 +6,8 @@ import { PerlinNoise } from '../../utils/PerlinNoise';
 import { BuildingType, Building } from '../ecs/components/components';
 import { productionBuildingQuery } from '../ecs/systems/buildingSystem';
 
-/**
- * WorldRenderer is responsible for rendering the game world,
- * including terrain tiles and building sprites.
- */
+// WorldRenderer is responsible for rendering the game world,
+// including terrain tiles and building sprites.
 export class WorldRenderer {
   // Tilemap components
   private scene: Phaser.Scene;
@@ -17,10 +15,7 @@ export class WorldRenderer {
   private tileset!: Phaser.Tilemaps.Tileset;
   private terrainLayer!: Phaser.Tilemaps.TilemapLayer;
   
-  // Map data
   private mapData: TerrainType[][] = [];
-  
-  // Building objects
   private buildingSprites: Map<number, Phaser.GameObjects.Sprite> = new Map();
   
   // Terrain experiments for UI and parameter tweaking
@@ -35,9 +30,6 @@ export class WorldRenderer {
     this.scene = scene;
   }
   
-  /**
-   * Initialize the renderer and create the tilemap
-   */
   initialize(): void {
     // Create tilemap
     this.map = this.scene.make.tilemap({
@@ -81,11 +73,7 @@ export class WorldRenderer {
     ).setOrigin(0, 0);
   }
   
-  /**
-   * Initialize the terrain experiments module
-   * @param initialParams Initial terrain parameters
-   * @returns The terrain parameters used
-   */
+  // Enables modifying terrain parameters via keyboard input, for testing.
   initTerrainExperiments(initialParams: Partial<TerrainParams> = {}): TerrainParams {
     return this._terrainExperiments.init(
       this.scene,
@@ -95,19 +83,12 @@ export class WorldRenderer {
     );
   }
   
-  /**
-   * Load map data
-   * @param mapData 2D array of terrain types
-   */
   loadMapData(mapData: TerrainType[][]): void {
     this.mapData = mapData;
     this.renderTerrainTiles();
   }
   
-  /**
-   * Generate terrain using Perlin noise
-   * @param params Terrain generation parameters
-   */
+  // Generate terrain using Perlin noise
   generateTerrain(params: TerrainParams): void {
     // Get parameters from passed object or use defaults
     const {
@@ -157,9 +138,7 @@ export class WorldRenderer {
     this.mapData = mapData;
   }
   
-  /**
-   * Render terrain tiles based on the current map data
-   */
+  // Render terrain tiles based on the current map data
   renderTerrainTiles(): void {
     if (!this.terrainLayer || !this.tileset) {
       console.error('Tilemap components not initialized');
@@ -185,12 +164,6 @@ export class WorldRenderer {
     }
   }
   
-  /**
-   * Get terrain type at the specified grid coordinates
-   * @param gridX X grid coordinate
-   * @param gridY Y grid coordinate
-   * @returns The terrain type at the specified location
-   */
   getTerrainTypeAt(gridX: number, gridY: number): TerrainType {
     // Check if position is within map bounds
     if (gridX >= 0 && gridX < GRID.MAP_WIDTH && gridY >= 0 && gridY < GRID.MAP_HEIGHT) {
@@ -199,12 +172,6 @@ export class WorldRenderer {
     return TerrainType.GRASS; // Default
   }
   
-  /**
-   * Check if a position is valid for movement (within bounds and not impassable)
-   * @param gridX X grid coordinate
-   * @param gridY Y grid coordinate
-   * @returns True if the position is valid, false otherwise
-   */
   isValidPosition(gridX: number, gridY: number): boolean {
     // Check bounds
     if (gridX < 0 || gridX >= GRID.MAP_WIDTH || gridY < 0 || gridY >= GRID.MAP_HEIGHT) {
@@ -215,10 +182,6 @@ export class WorldRenderer {
     return terrainType !== TerrainType.WATER && terrainType !== TerrainType.MOUNTAIN;
   }
   
-  /**
-   * Update building sprites based on ECS world
-   * @param world ECS world
-   */
   updateBuildingSprites(world: any): void {
     // Get all buildings from ECS
     const buildings = productionBuildingQuery(world);
@@ -270,29 +233,17 @@ export class WorldRenderer {
     }
   }
   
-  /**
-   * Get the current map data
-   * @returns 2D array of terrain types
-   */
   getMapData(): TerrainType[][] {
     return this.mapData;
   }
   
-  /**
-   * Check if a position is valid for building placement
-   * @param world ECS world
-   * @param gridX X grid coordinate
-   * @param gridY Y grid coordinate
-   * @param type Building type
-   * @returns True if the position is valid for building, false otherwise
-   */
+  // Check if a position is valid for building placement
   isValidBuildPosition(world: any, gridX: number, gridY: number, type: BuildingType): boolean {
     // Check if position is passable
     if (!this.isValidPosition(gridX, gridY)) {
       return false;
     }
     
-    // Get building system
     const getBuildingAt = (world.getBuildingAt || 
       ((world: any, x: number, y: number) => -1)); // Default if not available
     
@@ -301,10 +252,13 @@ export class WorldRenderer {
       return false;
     }
     
-    // For mining drills, check if they're on correct resource
-    const terrainType = this.getTerrainTypeAt(gridX, gridY);
-    
+    // We only have one type of building for now
+    if (type !== BuildingType.MINING_DRILL) {
+      console.error('TODO: Implement logic for this building type');
+    }
+
     // Mining drills should only be placed on iron ore
+    const terrainType = this.getTerrainTypeAt(gridX, gridY);
     return terrainType === TerrainType.IRON_ORE;
   }
 }
