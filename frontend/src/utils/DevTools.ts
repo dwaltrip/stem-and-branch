@@ -32,7 +32,13 @@ export function initDevTools(): void {
     }
 
     // Get terrain at location
-    const terrainType = mainSceneInstance._getTerrainTypeAt(gridX, gridY);
+    const terrainType = mainSceneInstance._getTerrainTypeAt?.(gridX, gridY) || 
+                        mainSceneInstance.worldRenderer?.getTerrainTypeAt?.(gridX, gridY);
+    
+    if (terrainType === undefined) {
+      console.error('Unable to get terrain type - required method not found');
+      return false;
+    }
     
     // Place the building entity
     const entityId = addBuilding(world, BuildingType.MINING_DRILL, gridX, gridY);
