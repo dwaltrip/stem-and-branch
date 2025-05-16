@@ -15,6 +15,17 @@ export const moveIntentQuery = defineQuery([Position, MoveIntent]);
 export function processMovementIntents(world: IWorld) {
   const entities = moveIntentQuery(world);
   
+  // First, let's get all entities with Velocity but without MoveIntent and reset their velocity
+  const allMovableEntities = movableQuery(world);
+  for (let i = 0; i < allMovableEntities.length; i++) {
+    const entity = allMovableEntities[i];
+    if (!hasComponent(world, MoveIntent, entity)) {
+      Velocity.x[entity] = 0;
+      Velocity.y[entity] = 0;
+    }
+  }
+  
+  // Now process entities with MoveIntent
   for (let i = 0; i < entities.length; i++) {
     const entity = entities[i];
     
