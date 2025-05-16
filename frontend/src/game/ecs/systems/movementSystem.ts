@@ -1,6 +1,5 @@
-import { defineQuery, IWorld } from 'bitecs';
-import { Position, Velocity, PlayerControlled } from '../components/components';
-import { InputManager } from '../../input/InputManager';
+import { defineQuery, IWorld, hasComponent } from 'bitecs';
+import { Position, Velocity, PlayerControlled, MoveIntent } from '../components/components';
 import { GRID, PLAYER } from '../../GameConstants';
 import { TerrainType } from '../../terrain/TerrainTypes';
 
@@ -11,21 +10,26 @@ type TerrainProvider = {
 }
 
 export const movableQuery = defineQuery([Position, Velocity]);
-export const playerQuery = defineQuery([Position, Velocity, PlayerControlled]);
+export const moveIntentQuery = defineQuery([Position, MoveIntent]);
 
-export function playerInputSystem(world: IWorld, inputManager: InputManager) {
-  const playerEntities = playerQuery(world);
+export function processMovementIntents(world: IWorld) {
+  const entities = moveIntentQuery(world);
   
-  for (let i = 0; i < playerEntities.length; i++) {
-    const entity = playerEntities[i];
+  for (let i = 0; i < entities.length; i++) {
+    const entity = entities[i];
     
-    const movement = inputManager.getMovementVector();
-
-    // Just set raw input for now - speed will be applied in movement system
-    Velocity.x[entity] = movement.x;
-    Velocity.y[entity] = movement.y;
+    // If entity has a move intent, update its velocity
+    if (hasComponent(world, MoveIntent, entity)) {
+      // Set velocity based on intent
+      if (!hasComponent(world, Velocity, entity)) {
+        continue; // Skip if entity doesn't have velocity component
+      }
+      
+      Velocity.x[entity] = MoveIntent.x[entity];
+      Velocity.y[entity] = MoveIntent.y[entity];
+    }
   }
- 
+  
   return world;
 }
 

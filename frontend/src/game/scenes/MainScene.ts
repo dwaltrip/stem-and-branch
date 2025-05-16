@@ -8,7 +8,7 @@ import { WorldRenderer } from '../world/WorldRenderer';
 import { GameUI } from '../ui/GameUI';
 
 import { world as ecsWorld, createPlayerEntity } from '../ecs/world';
-import { movementSystem, playerInputSystem } from '../ecs/systems/movementSystem';
+import { movementSystem, processMovementIntents } from '../ecs/systems/movementSystem';
 import { getPlayerResources } from '../ecs/systems/resourceSystem';
 import { removeEntity } from 'bitecs';
 import { Position, BuildingType, Building } from '../ecs/components/components';
@@ -17,8 +17,11 @@ import {
   removeBuilding, 
   getBuildingAt,
   productionBuildingQuery,
-  buildingProductionSystem
+  buildingProductionSystem,
+  processBuildIntents,
+  processRemoveIntents
 } from '../ecs/systems/buildingSystem';
+import { intentSystem, cleanupIntents } from '../ecs/systems/intentSystem';
 
 export class MainScene extends Phaser.Scene {
   // Game objects
@@ -182,13 +185,9 @@ export class MainScene extends Phaser.Scene {
     this.gameUI.showTemporaryMessage('Map loaded successfully!');
   }
   
-  /**
-   * Serializes all buildings in the ECS world to BuildingData objects
-   */
   private _serializeBuildings(): BuildingData[] {
     const buildings = productionBuildingQuery(this.world);
     
-    // Use the imported Building component directly
     return buildings.map(entity => ({
       type: Building.type[entity],
       gridX: Building.gridX[entity],
@@ -196,9 +195,6 @@ export class MainScene extends Phaser.Scene {
     }));
   }
   
-  /**
-   * Creates building entities from BuildingData objects
-   */
   private _deserializeBuildings(buildings: BuildingData[]): void {
     // Remove all existing buildings first
     const existingBuildings = productionBuildingQuery(this.world);
@@ -226,16 +222,29 @@ export class MainScene extends Phaser.Scene {
     // Calculate delta time in seconds
     const deltaTime = this.game.loop.delta / 1000;
     
-    // Create terrain provider for the movement system
+    // Create terrain provider for the systems
     const terrainProvider = {
       getTerrainAt: this.worldRenderer.getTerrainTypeAt.bind(this.worldRenderer),
-      isValidPosition: this.worldRenderer.isValidPosition.bind(this.worldRenderer)
+      isValidPosition: this.worldRenderer.isValidPosition.bind(this.worldRenderer),
+      isValidBuildPosition: this.worldRenderer.isValidBuildPosition.bind(this.worldRenderer)
     };
     
     // Run ECS systems
-    playerInputSystem(this.world, this.inputManager);
+    
+    // STEP 1: Process input and create intents
+    intentSystem(this.world, this.inputManager);
+    
+    // STEP 2: Process intents and update game state
+    processMovementIntents(this.world);
+    processBuildIntents(this.world, terrainProvider);
+    processRemoveIntents(this.world);
+    
+    // STEP 3: Run regular systems
     movementSystem(this.world, deltaTime, terrainProvider);
     buildingProductionSystem(this.world, deltaTime, terrainProvider);
+    
+    // STEP 4: Cleanup one-time intents
+    cleanupIntents(this.world);
     
     // Get current player position from ECS
     const playerX = Position.x[this.playerEntity];
@@ -253,7 +262,6 @@ export class MainScene extends Phaser.Scene {
     this.gameUI.updatePositionDisplay(gridX, gridY);
     this.gameUI.updateTerrainInfo(this.worldRenderer.getTerrainTypeAt(gridX, gridY));
     this.gameUI.updateResourcesDisplay(getPlayerResources(this.world));
-    this._handleAdditionalInput(gridX, gridY);
     
     // Update building sprites
     this.worldRenderer.updateBuildingSprites(this.world);
@@ -263,22 +271,8 @@ export class MainScene extends Phaser.Scene {
   }
   
   /**
-   * Handle additional input actions like interact and inventory
-   */
-  private _handleAdditionalInput(gridX: number, gridY: number): void {
-    if (this.inputManager.wasActionJustPressed(InputAction.INTERACT)) {
-      // For now, log interaction attempt
-      console.log(`Attempting to interact at grid position ${gridX},${gridY}`);
-    }
-
-    if (this.inputManager.wasActionJustPressed(InputAction.TOGGLE_INVENTORY)) {
-      // For now, log inventory toggle
-      console.log('Toggling inventory');
-    }
-  }
-  
-  /**
    * Places a building at the specified grid coordinates
+   * This method is now primarily used by DevTools and other external systems
    */
   public placeBuilding(gridX: number, gridY: number, type: BuildingType): boolean {
     // Check if position is valid for building
@@ -293,6 +287,7 @@ export class MainScene extends Phaser.Scene {
   
   /**
    * Removes a building at the specified grid coordinates
+   * This method is now primarily used by DevTools and other external systems
    */
   public removeBuilding(gridX: number, gridY: number): boolean {
     return removeBuilding(this.world, gridX, gridY);

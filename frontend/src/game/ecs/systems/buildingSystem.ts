@@ -1,22 +1,74 @@
-import { defineQuery, IWorld, addEntity, addComponent, removeEntity } from 'bitecs';
-import { Building, BuildingType, BUILDING_DEFINITIONS, Production } from '../components/components';
+import { defineQuery, IWorld, addEntity, addComponent, removeEntity, hasComponent } from 'bitecs';
+import { 
+  Building, 
+  BuildingType, 
+  BUILDING_DEFINITIONS, 
+  Production, 
+  BuildIntent,
+  RemoveIntent
+} from '../components/components';
 import { modifyPlayerResources } from './resourceSystem';
 import { TerrainType } from '../../terrain/TerrainTypes';
 
 // Query for all buildings with production capability
 export const productionBuildingQuery = defineQuery([Building, Production]);
 
+// Intent queries
+export const buildIntentQuery = defineQuery([BuildIntent]);
+export const removeIntentQuery = defineQuery([RemoveIntent]);
+
 // Interface for terrain information needed by the building system
 export interface TerrainProvider {
   getTerrainAt: (gridX: number, gridY: number) => TerrainType;
+  isValidBuildPosition?: (world: IWorld, gridX: number, gridY: number, type: BuildingType) => boolean;
 }
 
-/**
- * Processes all production buildings and generates resources
- * @param world The ECS world
- * @param deltaTime Time in seconds since last update
- * @param terrainProvider Interface to access terrain information
- */
+export function processBuildIntents(world: IWorld, terrainProvider: TerrainProvider): IWorld {
+  // Process build intents
+  const buildEntities = buildIntentQuery(world);
+  
+  for (let i = 0; i < buildEntities.length; i++) {
+    const entity = buildEntities[i];
+    
+    const type = BuildIntent.type[entity];
+    const gridX = BuildIntent.gridX[entity];
+    const gridY = BuildIntent.gridY[entity];
+    
+    // Validate position if possible
+    if (terrainProvider.isValidBuildPosition && 
+        !terrainProvider.isValidBuildPosition(world, gridX, gridY, type)) {
+      continue;
+    }
+    
+    // Check if there's already a building at this position
+    if (getBuildingAt(world, gridX, gridY) !== -1) {
+      continue;
+    }
+    
+    // Add the building
+    addBuilding(world, type, gridX, gridY);
+  }
+  
+  return world;
+}
+
+export function processRemoveIntents(world: IWorld): IWorld {
+  // Process remove intents
+  const removeEntities = removeIntentQuery(world);
+  
+  for (let i = 0; i < removeEntities.length; i++) {
+    const entity = removeEntities[i];
+    
+    const gridX = RemoveIntent.gridX[entity];
+    const gridY = RemoveIntent.gridY[entity];
+    
+    // Remove building at the position
+    removeBuilding(world, gridX, gridY);
+  }
+  
+  return world;
+}
+
 export function buildingProductionSystem(world: IWorld, deltaTime: number, terrainProvider: TerrainProvider): IWorld {
   const buildings = productionBuildingQuery(world);
 
@@ -63,18 +115,7 @@ export function buildingProductionSystem(world: IWorld, deltaTime: number, terra
   return world;
 }
 
-/**
- * Adds a building to the world at the specified grid position
- * @param world The ECS world
- * @param type Building type to create
- * @param gridX Grid X position
- * @param gridY Grid Y position
- * @returns The entity ID of the created building, or -1 if creation failed
- */
 export function addBuilding(world: IWorld, type: BuildingType, gridX: number, gridY: number): number {
-  // Here you would typically validate the position, check for collisions, etc.
-  // For now, we'll keep it simple
-  
   // Create the building entity
   const entity = addEntity(world);
   
@@ -96,13 +137,6 @@ export function addBuilding(world: IWorld, type: BuildingType, gridX: number, gr
   return entity;
 }
 
-/**
- * Removes a building at the specified grid position
- * @param world The ECS world
- * @param gridX Grid X position
- * @param gridY Grid Y position
- * @returns True if a building was removed, false otherwise
- */
 export function removeBuilding(world: IWorld, gridX: number, gridY: number): boolean {
   const buildings = productionBuildingQuery(world);
   
@@ -118,13 +152,6 @@ export function removeBuilding(world: IWorld, gridX: number, gridY: number): boo
   return false;
 }
 
-/**
- * Gets a building at the specified grid position
- * @param world The ECS world
- * @param gridX Grid X position
- * @param gridY Grid Y position
- * @returns The entity ID of the building, or -1 if no building exists at that position
- */
 export function getBuildingAt(world: IWorld, gridX: number, gridY: number): number {
   const buildings = productionBuildingQuery(world);
   
