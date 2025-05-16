@@ -47,3 +47,35 @@ export const Production = defineComponent({
   progress: Types.f32, // Current progress towards next production (0-1)
   active: Types.ui8, // Whether the building is currently active (0=inactive, 1=active)
 });
+
+// ====== Intent Components ======
+// These components represent player intentions before they're executed
+
+// Intent to move in a direction
+export const MoveIntent = defineComponent({
+  x: Types.f32, // x direction, normalized (-1 to 1)
+  y: Types.f32, // y direction, normalized (-1 to 1)
+  duration: Types.f32, // How long this intent should last (in seconds)
+});
+
+// Intent to build something
+export const BuildIntent = defineComponent({
+  type: Types.ui8, // BuildingType to place
+  gridX: Types.ui16, // Target grid position X
+  gridY: Types.ui16, // Target grid position Y
+});
+
+// Intent to remove/demolish a building
+export const RemoveIntent = defineComponent({
+  gridX: Types.ui16, // Target grid position X
+  gridY: Types.ui16, // Target grid position Y
+});
+
+// Intent to interact with something at a position
+export const InteractIntent = defineComponent({
+  gridX: Types.ui16, // Target grid position X
+  gridY: Types.ui16, // Target grid position Y
+});
+
+// Intent to toggle inventory, no additional data needed
+export const ToggleInventoryIntent = defineComponent();
