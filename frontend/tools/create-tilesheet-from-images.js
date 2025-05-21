@@ -259,6 +259,24 @@ async function getSelectedFiles(args) {
 // Create the tilesheet from selected files
 async function createTilesheet(selectedFiles, prefix) {
   console.log(`Creating tilesheet with ${selectedFiles.length} selected files`);
+
+  // Generate output filename with prefix if provided
+  const finalOutputFilename = prefix 
+    ? `${prefix}_terrain_tileset.png`
+    : OUTPUT_FILENAME;
+  const outputPath = path.join(OUTPUT_DIR, finalOutputFilename);
+    
+  // Check if the output file already exists
+  if (fs.existsSync(outputPath)) {
+    console.log(`Output file already exists: ${outputPath}`);
+    console.log('Please delete it or choose a different prefix.');
+    process.exit(1);
+  }
+
+  // Create output directory if it doesn't exist
+  if (!fs.existsSync(OUTPUT_DIR)) {
+    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  }
   
   // Calculate dimensions for the tilesheet
   // We'll use a square or nearly-square layout
@@ -308,20 +326,8 @@ async function createTilesheet(selectedFiles, prefix) {
     };
   });
 
-  // Generate output filename with prefix if provided
-  const finalOutputFilename = prefix 
-    ? `${prefix}_terrain_tileset.png`
-    : OUTPUT_FILENAME;
-
   // Save the tilesheet
   const buffer = canvas.toBuffer('image/png');
-  
-  // Create output directory if it doesn't exist
-  if (!fs.existsSync(OUTPUT_DIR)) {
-    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-  }
-  
-  const outputPath = path.join(OUTPUT_DIR, finalOutputFilename);
   fs.writeFileSync(outputPath, buffer);
   console.log(`Tilesheet saved to ${outputPath}`);
 
@@ -329,7 +335,7 @@ async function createTilesheet(selectedFiles, prefix) {
   const mappingBasename = prefix 
     ? `${prefix}_tile_mapping.json`
     : 'tile_mapping.json';
-    
+
   const mappingPath = path.join(OUTPUT_DIR, mappingBasename);
   fs.writeFileSync(mappingPath, JSON.stringify(tileMapping, null, 2));
   console.log(`Tile mapping saved to ${mappingPath}`);

@@ -105,6 +105,9 @@ async function splitTilesheet(args) {
       const canvas = createCanvas(args.tileSize, args.tileSize);
       const ctx = canvas.getContext('2d');
       
+      // try out no image smoothing for our pixel art style
+      ctx.imageSmoothingEnabled = false;
+
       // Draw the tile portion, scaling to the target size
       ctx.drawImage(
         image,

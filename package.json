@@ -5,7 +5,6 @@
   "scripts": {
     "start": "cd frontend && npm run start",
     "build": "cd frontend && npm run build",
-    "dev": "cd frontend && bash ./tools/run-dev.sh",
     "test": "cd frontend && npm test"
   },
   "keywords": [
