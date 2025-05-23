@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { TerrainParams, TerrainType, BuildingTileIndex } from '../terrain/TerrainTypes';
+import { getTerrainTileIndex, getBuildingTileIndex } from '../assets/TileMappings';
 import { GRID } from '../GameConstants';
 import { terrainExperiments as terrainExperimentsModule } from '../terrain/TerrainExperiments';
 import { PerlinNoise } from '../../utils/PerlinNoise';
@@ -145,20 +146,10 @@ export class WorldRenderer {
       return;
     }
     
-    // Map TerrainType to tilemap indices
-    const typeToTileIndex = {
-      [TerrainType.WATER]: 0,
-      [TerrainType.SAND]: 1,
-      [TerrainType.IRON_ORE]: 2,
-      [TerrainType.GRASS]: 3,
-      [TerrainType.MOUNTAIN]: 4,
-      [5]: 5,
-    };
-    
     for (let y = 0; y < GRID.MAP_HEIGHT; y++) {
       for (let x = 0; x < GRID.MAP_WIDTH; x++) {
         const terrainType = this.mapData[y][x];
-        const tileIndex = typeToTileIndex[terrainType];
+        const tileIndex = getTerrainTileIndex(terrainType, x, y);
         this.terrainLayer.putTileAt(tileIndex, x, y);
       }
     }
@@ -211,17 +202,10 @@ export class WorldRenderer {
       
       // Create sprite if it doesn't exist
       if (!sprite) {
-        // Use tileset frame based on building type
-        let frame: number;
-        switch (buildingType) {
-          case BuildingType.MINING_DRILL:
-            frame = BuildingTileIndex.MINING_DRILL;
-            break;
-          default:
-            frame = BuildingTileIndex.MINING_DRILL; // Default frame
-        }
+        // Use tile mapping for building frame
+        const frame = getBuildingTileIndex(buildingType);
         
-        sprite = this.scene.add.sprite(pixelX, pixelY, 'terrain_tiles', frame);
+        sprite = this.scene.add.sprite(pixelX, pixelY, 'building_tiles', frame);
         sprite.setOrigin(0.5, 0.5);
         sprite.setDepth(1); // Above terrain, below UI
         this.buildingSprites.set(entity, sprite);

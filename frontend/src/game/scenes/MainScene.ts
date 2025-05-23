@@ -53,6 +53,15 @@ export class MainScene extends Phaser.Scene {
       }
     );
     
+    // Load building tileset (same file for now, will split later)
+    this.load.spritesheet('building_tiles', 
+      'assets/sprites/terrain_tileset.png',
+      { 
+        frameWidth: GRID.SIZE, 
+        frameHeight: GRID.SIZE 
+      }
+    );
+    
     // Create a simple player rectangle
     const playerSize = Math.floor(GRID.SIZE / 3);
     const playerGraphics = this.make.graphics({ x: 0, y: 0 });
