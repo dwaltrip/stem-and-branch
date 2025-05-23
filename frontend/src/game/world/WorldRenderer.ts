@@ -3,7 +3,7 @@ import { TerrainParams, TerrainType, BuildingTileIndex } from '../terrain/Terrai
 import { getTerrainTileIndex, getBuildingTileIndex } from '../assets/TileMappings';
 import { GRID } from '../GameConstants';
 import { terrainExperiments as terrainExperimentsModule } from '../terrain/TerrainExperiments';
-import { PerlinNoise } from '../../utils/PerlinNoise';
+import { generateTerrainData } from '../terrain/TerrainGenerator';
 import { BuildingType, Building } from '../ecs/components/components';
 import { productionBuildingQuery } from '../ecs/systems/buildingSystem';
 
@@ -74,13 +74,17 @@ export class WorldRenderer {
     ).setOrigin(0, 0);
   }
   
-  // Enables modifying terrain parameters via keyboard input, for testing.
-  initTerrainExperiments(initialParams: Partial<TerrainParams> = {}): TerrainParams {
+  // Initialize terrain experiments - with callback only for new terrain generation
+  initTerrainExperiments(initialParams: Partial<TerrainParams> = {}, enableControls: boolean = false): TerrainParams {
+    const onParamsChanged = enableControls ? (params: TerrainParams) => {
+      this.generateTerrain(params);
+      this.renderTerrainTiles();
+    } : undefined;
+    
     return this._terrainExperiments.init(
       this.scene,
       initialParams,
-      this.generateTerrain.bind(this),
-      this.renderTerrainTiles.bind(this)
+      onParamsChanged
     );
   }
   
@@ -89,54 +93,9 @@ export class WorldRenderer {
     this.renderTerrainTiles();
   }
   
-  // Generate terrain using Perlin noise
+  // Generate terrain using the pure terrain generation function
   generateTerrain(params: TerrainParams): void {
-    // Get parameters from passed object or use defaults
-    const {
-      noiseSeed = Math.random() * 1000,
-      noiseScale = 0.1,
-      noiseOctaves = 4,
-      noisePersistence = 0.5,
-      terrainThresholds = {
-        WATER: 0.3,
-        SAND: 0.4,
-        GRASS: 0.8,
-        MOUNTAIN: 1.0
-      }
-    } = params || {};
-    
-    const perlin = new PerlinNoise(noiseSeed);
-    const mapData = Array(GRID.MAP_HEIGHT).fill(0).map(() => 
-      Array(GRID.MAP_WIDTH).fill(TerrainType.GRASS)
-    );
-    
-    for (let y = 0; y < GRID.MAP_HEIGHT; y++) {
-      for (let x = 0; x < GRID.MAP_WIDTH; x++) {
-        const nx = x * noiseScale;
-        const ny = y * noiseScale;
-        const noiseValue = perlin.normalized(nx, ny, noiseOctaves, noisePersistence);
-        
-        let terrainType: TerrainType;
-        if (noiseValue < terrainThresholds.WATER) {
-          terrainType = TerrainType.WATER;
-        } else if (noiseValue < terrainThresholds.SAND) {
-          terrainType = TerrainType.SAND;
-        } else if (noiseValue < terrainThresholds.GRASS) {
-          if (Math.random() < 0.05) {
-            terrainType = TerrainType.IRON_ORE;
-          }
-          else {
-            terrainType = TerrainType.GRASS;
-          }
-        } else {
-          terrainType = TerrainType.MOUNTAIN;
-        }
-        
-        mapData[y][x] = terrainType;
-      }
-    }
-
-    this.mapData = mapData;
+    this.mapData = generateTerrainData(params);
   }
   
   // Render terrain tiles based on the current map data

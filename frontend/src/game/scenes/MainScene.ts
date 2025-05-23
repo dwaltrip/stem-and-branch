@@ -114,7 +114,35 @@ export class MainScene extends Phaser.Scene {
   }
   
   private initializeWorld(): void {
-    const savedMap = MapStorage.loadMap();
+    // Check if we have a saved map first
+    if (MapStorage.hasSavedMap()) {
+      // Show loading indicator for saved map
+      this.gameUI.showTemporaryMessage('Loading saved map...');
+      
+      const savedMap = MapStorage.loadMap();
+      if (savedMap) {
+        this.currentMapData = savedMap;
+        
+        // Initialize terrain experiments with saved parameters (no controls)
+        const terrainParams = {
+          ...savedMap.generationParameters,
+          noiseSeed: savedMap.seed
+        };
+        this.worldRenderer.initTerrainExperiments(terrainParams, false);
+        
+        // Load the saved terrain data
+        this.worldRenderer.loadMapData(savedMap.terrainGrid);
+        
+        // Load buildings
+        this._deserializeBuildings(savedMap.buildings || []);
+        
+        console.log('Loaded saved map');
+        return;
+      }
+    }
+    
+    // No saved map found, generate new terrain
+    this.gameUI.showTemporaryMessage('Generating new map...');
     
     const defaultParams = {
       noiseScale: 0.1,
@@ -129,28 +157,14 @@ export class MainScene extends Phaser.Scene {
       }
     };
     
-    // Use saved parameters if available
-    const terrainParams = savedMap ? {
-      ...savedMap.generationParameters,
-      noiseSeed: savedMap.seed
-    } : defaultParams;
+    this.currentMapData = MapStorage.createEmptyMap();
     
-    this.currentMapData = savedMap || MapStorage.createEmptyMap();
+    // Initialize terrain experiments with controls enabled for new terrain
+    this.worldRenderer.initTerrainExperiments(defaultParams, true);
+    this.worldRenderer.generateTerrain(defaultParams);
+    this.worldRenderer.renderTerrainTiles();
     
-    // Initialize terrain with parameters
-    this.worldRenderer.initTerrainExperiments(terrainParams);
-    
-    if (savedMap) {
-      this.worldRenderer.loadMapData(savedMap.terrainGrid);
-      console.log('Loaded saved map');
-      
-      // Load buildings
-      this._deserializeBuildings(savedMap.buildings || []);
-    } else {
-      this.worldRenderer.generateTerrain(terrainParams);
-      this.worldRenderer.renderTerrainTiles();
-      console.log('Generated new map');
-    }
+    console.log('Generated new map');
   }
 
   // Save the current map to localStorage

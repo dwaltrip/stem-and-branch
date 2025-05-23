@@ -4,8 +4,9 @@ import { TerrainParams, TerrainThresholds } from './TerrainTypes';
 /**
  * Terrain Experiments Module
  * 
- * This module contains tools and utilities for experimenting with 
+ * Minimal parameter management and UI for experimenting with 
  * terrain generation parameters in development mode.
+ * Decoupled from any rendering logic.
  */
 export class TerrainExperiments {
   private params: TerrainParams = {
@@ -22,23 +23,25 @@ export class TerrainExperiments {
   };
 
   private gameScene: Scene | null = null;
-  private generateTerrainFn: ((params: TerrainParams) => void) | null = null;
-  private renderTerrainTilesFn: (() => void) | null = null;
+  private onParamsChanged: ((params: TerrainParams) => void) | null = null;
 
   public init(
     scene: Scene, 
     initialParams: Partial<TerrainParams> = {},
-    generateFn: (params: TerrainParams) => void,
-    renderFn: () => void
+    onParamsChanged?: (params: TerrainParams) => void
   ): TerrainParams {
     this.gameScene = scene;
-    this.generateTerrainFn = generateFn;
-    this.renderTerrainTilesFn = renderFn;
+    this.onParamsChanged = onParamsChanged || null;
     
     // Initialize parameters
     this.params = { ...this.params, ...initialParams };
-    this.setupUI(scene);
-    this.setupControls(scene);
+    
+    // Only setup UI and controls if we have a callback (i.e., for new terrain generation)
+    if (this.onParamsChanged) {
+      this.setupUI(scene);
+      this.setupControls(scene);
+    }
+    
     return this.params;
   }
 
@@ -110,13 +113,12 @@ export class TerrainExperiments {
   }
 
   public regenerateTerrain(): void {
-    if (!this.gameScene || !this.generateTerrainFn || !this.renderTerrainTilesFn) {
-      console.error('Scene or terrain functions not available');
+    if (!this.onParamsChanged) {
+      console.warn('No params changed callback available');
       return;
     }
     
-    this.generateTerrainFn(this.params);
-    this.renderTerrainTilesFn();
+    this.onParamsChanged(this.params);
     
     // Update the UI
     const noiseText = (this.gameScene as any).noiseText;
