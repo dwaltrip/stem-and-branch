@@ -30,8 +30,13 @@ export function getTerrainTileIndex(terrainType: TerrainType, x: number, y: numb
   }
   
   // Use position-based hash for consistent variant selection
-  const hash = (x * 73 + y * 31) % variants.length;
-  return variants[hash];
+  // XOR mixing breaks up patterns nicely
+  // From claude convo: https://claude.ai/share/da40cf00-1b51-4549-8cc9-576b52f12bf0
+  let hash = x * 374761393 + y * 668265263;
+  hash = hash ^ (hash >>> 13);
+  hash = hash * 1274126177;
+  hash = hash ^ (hash >>> 16);
+  return variants[Math.abs(hash) % variants.length];
 }
 
 // Helper function to get building tile index
