@@ -5,6 +5,7 @@ import { MapStorage, MapData, BuildingData } from '../world/MapStorage';
 import { setMainSceneInstance } from '../../utils/DevTools';
 import { TerrainType } from '../terrain/TerrainTypes';
 import { WorldRenderer } from '../world/WorldRenderer';
+import { getAssetPath } from '../config/GameConfig';
 import { GameUI } from '../ui/GameUI';
 
 import { world as ecsWorld, createPlayerEntity } from '../ecs/world';
@@ -46,7 +47,7 @@ export class MainScene extends Phaser.Scene {
   preload(): void {
     // Load terrain tileset as a spritesheet with proper frame size
     this.load.spritesheet('terrain_tiles', 
-      'assets/sprites/terrain_tileset.png',
+      getAssetPath('TERRAIN_TILESHEET'),
       { 
         frameWidth: GRID.SIZE, 
         frameHeight: GRID.SIZE 
@@ -55,7 +56,7 @@ export class MainScene extends Phaser.Scene {
     
     // Load building tileset (same file for now, will split later)
     this.load.spritesheet('building_tiles', 
-      'assets/sprites/terrain_tileset.png',
+      getAssetPath('BUILDING_TILESHEET'),
       { 
         frameWidth: GRID.SIZE, 
         frameHeight: GRID.SIZE 
