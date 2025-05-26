@@ -5,8 +5,7 @@ import * as fs from 'fs';
 interface ScaleOptions {
   inputPath: string;
   outputPath: string;
-  targetWidth: number;
-  targetHeight: number;
+  targetSize: number; // Changed to single size for square output
 }
 
 /**
@@ -43,10 +42,72 @@ function scalePixels(
 }
 
 /**
- * Scale a pixel art image
+ * Calculate dimensions for scaling while preserving aspect ratio
  */
-async function scaleImage(options: ScaleOptions): Promise<void> {
-  const { inputPath, outputPath, targetWidth, targetHeight } = options;
+function calculateScaledDimensions(
+  sourceWidth: number,
+  sourceHeight: number,
+  targetSize: number
+): { scaledWidth: number; scaledHeight: number; offsetX: number; offsetY: number } {
+  const sourceAspect = sourceWidth / sourceHeight;
+  
+  let scaledWidth: number;
+  let scaledHeight: number;
+  
+  if (sourceAspect > 1) {
+    // Image is wider than tall - fit to width
+    scaledWidth = targetSize;
+    scaledHeight = Math.round(targetSize / sourceAspect);
+  } else {
+    // Image is taller than wide or square - fit to height
+    scaledHeight = targetSize;
+    scaledWidth = Math.round(targetSize * sourceAspect);
+  }
+  
+  // Calculate centering offsets
+  const offsetX = Math.floor((targetSize - scaledWidth) / 2);
+  const offsetY = Math.floor((targetSize - scaledHeight) / 2);
+  
+  return { scaledWidth, scaledHeight, offsetX, offsetY };
+}
+
+/**
+ * Create a square canvas with transparent background and centered scaled image
+ */
+function createSquareImage(
+  scaledPixels: Uint8ClampedArray,
+  scaledWidth: number,
+  scaledHeight: number,
+  targetSize: number,
+  offsetX: number,
+  offsetY: number
+): Uint8ClampedArray {
+  const squarePixels = new Uint8ClampedArray(targetSize * targetSize * 4);
+  
+  // Initialize with transparent pixels (all values 0)
+  squarePixels.fill(0);
+  
+  // Copy scaled image to center of square canvas
+  for (let y = 0; y < scaledHeight; y++) {
+    for (let x = 0; x < scaledWidth; x++) {
+      const sourceIndex = (y * scaledWidth + x) * 4;
+      const targetIndex = ((y + offsetY) * targetSize + (x + offsetX)) * 4;
+      
+      squarePixels[targetIndex] = scaledPixels[sourceIndex];
+      squarePixels[targetIndex + 1] = scaledPixels[sourceIndex + 1];
+      squarePixels[targetIndex + 2] = scaledPixels[sourceIndex + 2];
+      squarePixels[targetIndex + 3] = scaledPixels[sourceIndex + 3];
+    }
+  }
+  
+  return squarePixels;
+}
+
+/**
+ * Scale a pixel art image to a square format with transparent padding
+ */
+async function scaleImageToSquare(options: ScaleOptions): Promise<void> {
+  const { inputPath, outputPath, targetSize } = options;
 
   // Validate input file exists
   if (!fs.existsSync(inputPath)) {
@@ -59,8 +120,8 @@ async function scaleImage(options: ScaleOptions): Promise<void> {
   }
 
   // Validate dimensions
-  if (targetWidth <= 0 || targetHeight <= 0) {
-    throw new Error('Width and height must be positive numbers');
+  if (targetSize <= 0) {
+    throw new Error('Size must be a positive number');
   }
 
   try {
@@ -73,27 +134,46 @@ async function scaleImage(options: ScaleOptions): Promise<void> {
     sourceCtx.drawImage(sourceImage, 0, 0);
     const sourceImageData = sourceCtx.getImageData(0, 0, sourceImage.width, sourceImage.height);
     
-    // Scale pixels
+    // Calculate scaling dimensions
+    const { scaledWidth, scaledHeight, offsetX, offsetY } = calculateScaledDimensions(
+      sourceImage.width,
+      sourceImage.height,
+      targetSize
+    );
+    
+    console.log(`Scaling ${sourceImage.width}x${sourceImage.height} to ${scaledWidth}x${scaledHeight}, centered in ${targetSize}x${targetSize}`);
+    
+    // Scale pixels while preserving aspect ratio
     const scaledPixels = scalePixels(
       sourceImageData.data,
       sourceImage.width,
       sourceImage.height,
-      targetWidth,
-      targetHeight
+      scaledWidth,
+      scaledHeight
+    );
+    
+    // Create square image with transparent padding
+    const squarePixels = createSquareImage(
+      scaledPixels,
+      scaledWidth,
+      scaledHeight,
+      targetSize,
+      offsetX,
+      offsetY
     );
     
     // Create output image
-    const targetCanvas = createCanvas(targetWidth, targetHeight);
+    const targetCanvas = createCanvas(targetSize, targetSize);
     const targetCtx = targetCanvas.getContext('2d');
-    const targetImageData = targetCtx.createImageData(targetWidth, targetHeight);
-    targetImageData.data.set(scaledPixels);
+    const targetImageData = targetCtx.createImageData(targetSize, targetSize);
+    targetImageData.data.set(squarePixels);
     targetCtx.putImageData(targetImageData, 0, 0);
     
     // Save result
     const outputBuffer = targetCanvas.toBuffer('image/png');
     await fs.promises.writeFile(outputPath, outputBuffer);
     
-    console.log(`Scaled ${inputPath} to ${targetWidth}x${targetHeight} → ${outputPath}`);
+    console.log(`Created square image ${targetSize}x${targetSize} → ${outputPath}`);
     
   } catch (error) {
     throw new Error(`Failed to process ${inputPath}: ${error.message}`);
@@ -102,25 +182,22 @@ async function scaleImage(options: ScaleOptions): Promise<void> {
 
 // CLI setup
 program
-  .name('scale')
-  .description('Scale pixel art images using nearest neighbor sampling')
+  .name('scale-square')
+  .description('Scale pixel art images to square format with transparent padding')
   .arguments('<input> <output>')
-  .option('-w, --width <number>', 'target width', '32')
-  .option('-h, --height <number>', 'target height', '32')
+  .option('-s, --size <number>', 'target square size', '32')
   .action(async (input: string, output: string, options: any) => {
     try {
-      const width = parseInt(options.width);
-      const height = parseInt(options.height);
+      const size = parseInt(options.size);
       
-      if (isNaN(width) || isNaN(height)) {
-        throw new Error('Width and height must be valid numbers');
+      if (isNaN(size)) {
+        throw new Error('Size must be a valid number');
       }
       
-      await scaleImage({
+      await scaleImageToSquare({
         inputPath: input,
         outputPath: output,
-        targetWidth: width,
-        targetHeight: height
+        targetSize: size
       });
     } catch (error) {
       console.error('Error:', error.message);
@@ -136,4 +213,4 @@ if (process.argv.length === 2) {
 program.parse();
 
 // Export for use as module
-export { scaleImage };
+export { scaleImageToSquare };
