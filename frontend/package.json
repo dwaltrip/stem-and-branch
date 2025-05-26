@@ -25,10 +25,14 @@
     "phaser": "^3.55.2"
   },
   "devDependencies": {
+    "@types/node": "^22.15.21",
+    "commander": "^14.0.0",
     "ts-loader": "^9.4.4",
+    "tsx": "^4.19.4",
     "typescript": "^5.2.2",
     "webpack": "^5.88.2",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^4.15.1"
-  }
+  },
+  "type": "module"
 }
