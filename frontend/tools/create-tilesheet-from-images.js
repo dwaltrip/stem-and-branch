@@ -8,10 +8,14 @@
  *   --help: Show help
  */
 
-const fs = require('fs');
-const path = require('path');
-const { createCanvas, loadImage } = require('canvas');
-const readline = require('readline');
+import fs from 'fs';
+import path from 'path';
+import { createCanvas, loadImage } from 'canvas';
+import readline from 'readline';
+
+import {fileURLToPath} from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Configuration
 const TILE_SIZE = 32;
@@ -325,6 +329,12 @@ async function createTilesheet(selectedFiles, prefix) {
       y: row * TILE_SIZE
     };
   });
+
+  if (fs.existsSync(outputPath)) {
+    console.error(`Output file already exists: ${outputPath}`);
+    console.log('Please delete it or choose a different prefix.');
+    process.exit(1);
+  }
 
   // Save the tilesheet
   const buffer = canvas.toBuffer('image/png');

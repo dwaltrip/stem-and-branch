@@ -8,7 +8,7 @@
     "start": "webpack serve --mode development",
     "test": "echo \"Error: no test specified\" && exit 1",
     "generate-sprites": "node tools/generate-spritesheet.js",
-    "create-tilesheet": "node tools/create-tilesheet-from-images.js",
+    "create-tilesheet": "node --import tsx tools/create-tilesheet-from-images.js",
     "split-tilesheet": "node tools/split-tilesheet.js",
     "downscale": "node --import tsx tools/downscale-pixel-art.ts"
   },
