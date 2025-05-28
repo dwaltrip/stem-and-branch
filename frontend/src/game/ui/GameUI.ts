@@ -21,16 +21,16 @@ export class GameUI {
   
   private createUIElements(): void {
     // Display player position
-    this.positionText = this.scene.add.text(10, 10, 'Position: 0,0', { 
-      fontSize: '16px', 
+    this.positionText = this.scene.add.text(20, 10, 'Position: 0,0', { 
+      fontSize: '18px', 
       color: '#fff',
       backgroundColor: '#000'
     });
     this.positionText.setScrollFactor(0); // Fix to camera
     
     // Display terrain info
-    this.terrainText = this.scene.add.text(10, 40, 'Terrain: Grass', {
-      fontSize: '16px',
+    this.terrainText = this.scene.add.text(20, 40, 'Terrain: Grass', {
+      fontSize: '18px',
       color: '#fff',
       backgroundColor: '#000'
     });
@@ -45,9 +45,9 @@ export class GameUI {
     this.resourcesText.setScrollFactor(0);
     
     // Add save/load UI text
-    this.saveLoadText = this.scene.add.text(10, this.scene.game.canvas.height - 100, 
+    this.saveLoadText = this.scene.add.text(20, this.scene.game.canvas.height - 80, 
       'Press Z to save map\nPress X to load map\nPress N for new map', { 
-      fontSize: '14px', 
+      fontSize: '18px', 
       color: '#fff',
       backgroundColor: '#000'
     });
