@@ -1,24 +1,20 @@
 import Phaser from 'phaser';
 import { GRID } from '../GameConstants';
-import { InputManager, InputAction } from '../input/InputManager';
+import { InputManager } from '../input/InputManager';
 import { MapStorage, MapData, BuildingData } from '../world/MapStorage';
 import { setMainSceneInstance } from '../../utils/DevTools';
-import { TerrainType } from '../terrain/TerrainTypes';
 import { WorldRenderer } from '../world/WorldRenderer';
 import { getAssetPath } from '../config/GameConfig';
 import { GameUI } from '../ui/GameUI';
 
 import { world as ecsWorld, createPlayerEntity } from '../ecs/world';
 import { movementSystem, processMovementIntents } from '../ecs/systems/movementSystem';
-import { getPlayerResources } from '../ecs/systems/resourceSystem';
 import { removeEntity } from 'bitecs';
 import { Position, BuildingType, Building } from '../ecs/components/components';
 import { 
   addBuilding, 
   removeBuilding, 
-  getBuildingAt,
-  productionBuildingQuery,
-  buildingProductionSystem,
+  buildingQuery,
   processBuildIntents,
   processRemoveIntents
 } from '../ecs/systems/buildingSystem';
@@ -210,7 +206,7 @@ export class MainScene extends Phaser.Scene {
   }
   
   private _serializeBuildings(): BuildingData[] {
-    const buildings = productionBuildingQuery(this.world);
+    const buildings = buildingQuery(this.world);
     
     return buildings.map(entity => ({
       type: Building.type[entity],
@@ -221,7 +217,7 @@ export class MainScene extends Phaser.Scene {
   
   private _deserializeBuildings(buildings: BuildingData[]): void {
     // Remove all existing buildings first
-    const existingBuildings = productionBuildingQuery(this.world);
+    const existingBuildings = buildingQuery(this.world);
     for (let i = 0; i < existingBuildings.length; i++) {
       removeEntity(this.world, existingBuildings[i]);
     }
@@ -265,7 +261,6 @@ export class MainScene extends Phaser.Scene {
     
     // STEP 3: Run regular systems
     movementSystem(this.world, deltaTime, terrainProvider);
-    buildingProductionSystem(this.world, deltaTime, terrainProvider);
     
     // STEP 4: Cleanup one-time intents
     cleanupIntents(this.world);
@@ -285,7 +280,6 @@ export class MainScene extends Phaser.Scene {
     // Update UI
     this.gameUI.updatePositionDisplay(gridX, gridY);
     this.gameUI.updateTerrainInfo(this.worldRenderer.getTerrainTypeAt(gridX, gridY));
-    this.gameUI.updateResourcesDisplay(getPlayerResources(this.world));
     
     // Update building sprites
     this.worldRenderer.updateBuildingSprites(this.world);

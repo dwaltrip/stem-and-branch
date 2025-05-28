@@ -10,7 +10,6 @@ export class GameUI {
   // Game UI elements
   private positionText!: Phaser.GameObjects.Text;
   private terrainText!: Phaser.GameObjects.Text;
-  private resourcesText!: Phaser.GameObjects.Text;
   private saveLoadText!: Phaser.GameObjects.Text;
   
   constructor(scene: Phaser.Scene, inputManager: InputManager) {
@@ -35,14 +34,6 @@ export class GameUI {
       backgroundColor: '#000'
     });
     this.terrainText.setScrollFactor(0);
-    
-    // Display player resources
-    this.resourcesText = this.scene.add.text(10, 130, 'Resources: Iron Ore: 0', {
-      fontSize: '16px',
-      color: '#fff',
-      backgroundColor: '#000'
-    });
-    this.resourcesText.setScrollFactor(0);
     
     // Add save/load UI text
     this.saveLoadText = this.scene.add.text(20, this.scene.game.canvas.height - 80, 
@@ -80,10 +71,6 @@ export class GameUI {
     }
 
     this.terrainText.setText(`Terrain: ${terrainName}`);
-  }
-  
-  updateResourcesDisplay(resources: { ironOre: number }): void {
-    this.resourcesText.setText(`Resources: Iron Ore: ${resources.ironOre}`);
   }
   
   showTemporaryMessage(message: string): void {

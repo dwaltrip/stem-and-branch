@@ -5,7 +5,7 @@ import { GRID } from '../GameConstants';
 import { terrainExperiments as terrainExperimentsModule } from '../terrain/TerrainExperiments';
 import { generateTerrainData } from '../terrain/TerrainGenerator';
 import { BuildingType, Building } from '../ecs/components/components';
-import { productionBuildingQuery } from '../ecs/systems/buildingSystem';
+import { buildingQuery } from '../ecs/systems/buildingSystem';
 
 // WorldRenderer is responsible for rendering the game world,
 // including terrain tiles and building sprites.
@@ -134,7 +134,7 @@ export class WorldRenderer {
   
   updateBuildingSprites(world: any): void {
     // Get all buildings from ECS
-    const buildings = productionBuildingQuery(world);
+    const buildings = buildingQuery(world);
     const entitySet = new Set(buildings);
     
     // Remove sprites for entities that no longer exist

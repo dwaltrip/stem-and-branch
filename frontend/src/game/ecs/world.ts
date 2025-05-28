@@ -1,6 +1,5 @@
 import { createWorld, addEntity, addComponent } from 'bitecs';
-import { Position, Velocity, PlayerControlled, Resources } from './components/components';
-import { GRID } from '../GameConstants';
+import { Position, Velocity, PlayerControlled } from './components/components';
 
 // Create a single world instance
 export const world = createWorld();
@@ -12,13 +11,11 @@ export function createPlayerEntity(x: number, y: number): number {
   addComponent(world, Position, entity);
   addComponent(world, Velocity, entity);
   addComponent(world, PlayerControlled, entity);
-  addComponent(world, Resources, entity);
 
   Position.x[entity] = x;
   Position.y[entity] = y;
   Velocity.x[entity] = 0;
   Velocity.y[entity] = 0;
-  Resources.ironOre[entity] = 0;
 
   return entity;
 }
