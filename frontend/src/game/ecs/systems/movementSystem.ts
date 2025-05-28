@@ -2,12 +2,7 @@ import { defineQuery, IWorld, hasComponent } from 'bitecs';
 import { Position, Velocity, PlayerControlled, MoveIntent } from '../components/components';
 import { GRID, PLAYER } from '../../GameConstants';
 import { TerrainType } from '../../terrain/TerrainTypes';
-
-// Need the map data to check terrain
-type TerrainProvider = {
-  getTerrainAt: (gridX: number, gridY: number) => TerrainType;
-  isValidPosition: (gridX: number, gridY: number) => boolean;
-}
+import { TerrainProvider } from '../../types';
 
 export const movableQuery = defineQuery([Position, Velocity]);
 export const moveIntentQuery = defineQuery([Position, MoveIntent]);

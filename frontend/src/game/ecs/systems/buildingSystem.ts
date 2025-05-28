@@ -5,7 +5,7 @@ import {
   BuildIntent,
   RemoveIntent
 } from '../components/components';
-import { TerrainType } from '../../terrain/TerrainTypes';
+import { TerrainProvider } from '../../types';
 
 // Query for all buildings with production capability
 export const buildingQuery = defineQuery([Building]);
@@ -13,12 +13,6 @@ export const buildingQuery = defineQuery([Building]);
 // Intent queries
 export const buildIntentQuery = defineQuery([BuildIntent]);
 export const removeIntentQuery = defineQuery([RemoveIntent]);
-
-// Interface for terrain information needed by the building system
-export interface TerrainProvider {
-  getTerrainAt: (gridX: number, gridY: number) => TerrainType;
-  isValidBuildPosition?: (world: IWorld, gridX: number, gridY: number, type: BuildingType) => boolean;
-}
 
 export function processBuildIntents(world: IWorld, terrainProvider: TerrainProvider): IWorld {
   // Process build intents

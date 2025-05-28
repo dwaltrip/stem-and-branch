@@ -8,17 +8,15 @@ import { getAssetPath } from '../config/GameConfig';
 import { GameUI } from '../ui/GameUI';
 
 import { world as ecsWorld, createPlayerEntity } from '../ecs/world';
-import { movementSystem, processMovementIntents } from '../ecs/systems/movementSystem';
+import { runSystems } from '../ecs/systemRunner';
+import { TerrainProvider } from '../types';
 import { removeEntity } from 'bitecs';
 import { Position, BuildingType, Building } from '../ecs/components/components';
 import { 
   addBuilding, 
   removeBuilding, 
-  buildingQuery,
-  processBuildIntents,
-  processRemoveIntents
+  buildingQuery
 } from '../ecs/systems/buildingSystem';
-import { intentSystem, cleanupIntents } from '../ecs/systems/intentSystem';
 
 export class MainScene extends Phaser.Scene {
   // Game objects
@@ -243,27 +241,14 @@ export class MainScene extends Phaser.Scene {
     const deltaTime = this.game.loop.delta / 1000;
     
     // Create terrain provider for the systems
-    const terrainProvider = {
+    const terrainProvider: TerrainProvider = {
       getTerrainAt: this.worldRenderer.getTerrainTypeAt.bind(this.worldRenderer),
       isValidPosition: this.worldRenderer.isValidPosition.bind(this.worldRenderer),
       isValidBuildPosition: this.worldRenderer.isValidBuildPosition.bind(this.worldRenderer)
     };
     
-    // Run ECS systems
-    
-    // STEP 1: Process input and create intents
-    intentSystem(this.world, this.inputManager);
-    
-    // STEP 2: Process intents and update game state
-    processMovementIntents(this.world);
-    processBuildIntents(this.world, terrainProvider);
-    processRemoveIntents(this.world);
-    
-    // STEP 3: Run regular systems
-    movementSystem(this.world, deltaTime, terrainProvider);
-    
-    // STEP 4: Cleanup one-time intents
-    cleanupIntents(this.world);
+    // Run all ECS systems through the central system runner
+    runSystems(this.world, deltaTime, this.inputManager, terrainProvider);
     
     // Get current player position from ECS
     const playerX = Position.x[this.playerEntity];
