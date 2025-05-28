@@ -43,5 +43,3 @@ export function getTerrainTileIndex(terrainType: TerrainType, x: number, y: numb
 export function getBuildingTileIndex(buildingType: BuildingType): number {
   return BUILDING_TILES[buildingType];
 }
-
-// Note: Asset paths moved to GameConfig.ts for centralized configuration
