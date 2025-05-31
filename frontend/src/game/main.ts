@@ -23,15 +23,22 @@ const StartGame = (parent: string) => {
   
   // Window resize handling
   const resizeToFit = () => {
-    if (game) {
+    // previously only needed to check for `game`
+    // not sure why but I think upgrading Phaser to 3.90, I needed the extra check
+    if (game && game?.scale?.baseSize?.snapTo) {
       const width = window.innerWidth;
       const height = window.innerHeight;
+      console.log(`Resizing game to fit window: ${width}x${height}`);
       game.scale.resize(width, height);
     }
   };
   
-  window.addEventListener('resize', resizeToFit);
-  window.document.addEventListener('DOMContentLoaded', resizeToFit);
+  // Wait for game to be ready before setting up resize handlers
+  game.events.once('ready', () => {
+    console.log('Game is ready, setting up resize handlers.');
+    window.addEventListener('resize', resizeToFit);
+    resizeToFit(); // Initial resize
+  });
   
   // Make game available globally for debugging
   (window as any).game = game;

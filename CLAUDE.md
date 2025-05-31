@@ -14,9 +14,10 @@ We are building a web-based factory and automation game inspired by Factorio. Pl
 ## Tech Stack
 
 - TypeScript frontend with strict mode
+- React for UI components and standard widgets
+- Phaser.js for game graphics and rendering
 - bitECS for core architecture/state management
-- Phaser.js as game engine (new learning area)
-- Webpack for bundling
+- Vite for bundling and development
 
 ## Project Structure
 
@@ -28,7 +29,7 @@ Current organization (subject to change as project evolves):
 
 ## Build and Development
 
-- `npm run start` - Start webpack dev server (port 8080)
+- `npm run dev` - Start Vite dev server
 - `npm run build` - Build for production / check for TypeScript errors
 - `npm test` - Run tests (not yet configured)
 
