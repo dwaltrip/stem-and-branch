@@ -1,4 +1,6 @@
 import { AUTO, Game } from 'phaser';
+import { MainScene } from './scenes/MainScene';
+import { initDevTools } from '../utils/DevTools';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: AUTO,
@@ -13,7 +15,7 @@ const config: Phaser.Types.Core.GameConfig = {
       debug: false
     }
   },
-  scene: [] // MainScene will be added once game code is copied
+  scene: [MainScene]
 };
 
 const StartGame = (parent: string) => {
@@ -34,8 +36,8 @@ const StartGame = (parent: string) => {
   // Make game available globally for debugging
   (window as any).game = game;
   
-  // TODO: Initialize dev tools once copied over
-  // initDevTools();
+  // Initialize development tools
+  initDevTools();
   
   console.log('Game initialized.');
   
