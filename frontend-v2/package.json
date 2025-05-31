@@ -1,33 +1,46 @@
 {
-    "name": "template-react-ts",
-    "description": "...",
-    "version": "1.1.0",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/phaserjs/template-react-ts.git"
-    },
-    "author": "Phaser Studio <support@phaser.io> (https://phaser.io/)",
-    "license": "MIT",
+    "name": "stem-and-branch--frontend-v2",
+    "description": "Frontend for Stem and Branch, a web-based factory and automation game",
+    "version": "1.0.0",
+    "author": "",
+    "license": "ISC",
+    "type": "module",
+    "keywords": [
+        "game",
+        "phaser",
+        "factory",
+        "automation"
+    ],
     "scripts": {
         "dev": "vite --config vite/config.dev.mjs",
-        "build": "vite build --config vite/config.prod.mjs"
+        "build": "vite build --config vite/config.prod.mjs",
+        "start": "npm run dev",
+        "generate-sprites": "node tools/generate-spritesheet.js",
+        "create-tilesheet": "node --import tsx tools/create-tilesheet-from-images.js",
+        "split-tilesheet": "node tools/split-tilesheet.js",
+        "downscale": "node --import tsx tools/downscale-pixel-art.ts"
     },
     "dependencies": {
+        "bitecs": "^0.3.40",
+        "canvas": "^2.11.2",
         "phaser": "^3.90.0",
         "react": "^19.0.0",
         "react-dom": "^19.0.0"
     },
     "devDependencies": {
         "@eslint/js": "^9.22.0",
+        "@types/node": "^22.15.21",
         "@types/react": "^19.0.10",
         "@types/react-dom": "^19.0.4",
         "@vitejs/plugin-react": "^4.3.4",
+        "commander": "^14.0.0",
         "eslint": "^9.22.0",
         "eslint-plugin-react-hooks": "^5.2.0",
         "eslint-plugin-react-refresh": "^0.4.19",
         "globals": "^16.0.0",
         "prettier": "^3.5.3",
         "terser": "^5.28.1",
+        "tsx": "^4.19.4",
         "typescript": "~5.7.2",
         "typescript-eslint": "^8.26.1",
         "vite": "^6.3.1"
